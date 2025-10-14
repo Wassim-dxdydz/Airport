@@ -1,7 +1,0 @@
-spring:
-  application:
-    name: "PC-PROJECT"
-  r2dbc:
-    url: r2dbc:postgresql://localhost:5432/airport
-    username: postgres
-    password: password

@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: PC-PROJECT
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/${POSTGRES_DB:airport}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:airport}
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+
+server:
+  port: 8080

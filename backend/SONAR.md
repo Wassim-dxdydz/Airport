@@ -122,7 +122,7 @@ mvn clean
 Le lancement d’un test qualité se fait désormais à partir d’un goal `Maven` :
 - Pensez à générer votre token (cf. [Création d’un token](#création-dun-token))
 ```shell
-mvn clean verify sonar:sonar -Dsonar.login=myAuthenticationToken
+mvn clean verify sonar:sonar -D sonar.login=myAuthenticationToken
 ```
 
 ⚠️ Attention : la commande `mvn install` doit réussir avant de tester celle-ci !
