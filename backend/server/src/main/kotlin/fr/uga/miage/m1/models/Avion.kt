@@ -10,16 +10,34 @@ import java.util.UUID
 @Table("avion")
 data class Avion(
     @Id
-    val id: UUID = UUID.randomUUID(),
+    val id: UUID? = null,
 
-    val immatriculation: String,   // UNIQUE
+    val immatriculation: String,
     val type: String,
     val capacite: Int,
     val etat: AvionEtat,
 
     @Column("hangar_id")
-    val hangarId: UUID? = null,    // association (nullable)
+    val hangarId: UUID? = null,
 
     @Column("created_at")
-    val createdAt: LocalDateTime? = null,
-)
+    val createdAt: LocalDateTime? = null
+) {
+    companion object {
+        fun create(
+            immatriculation: String,
+            type: String,
+            capacite: Int,
+            etat: AvionEtat,
+            hangarId: UUID? = null
+        ) = Avion(
+            id = null,
+            immatriculation = immatriculation,
+            type = type,
+            capacite = capacite,
+            etat = etat,
+            hangarId = hangarId,
+            createdAt = null
+        )
+    }
+}

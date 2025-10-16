@@ -12,23 +12,20 @@ import reactor.core.publisher.Mono
 import java.util.UUID
 
 @Service
-class PisteService(private val repo: PisteRepository) {
-
-    fun list(): Flux<Piste> = repo.findAll()
-
-    fun get(id: UUID): Mono<Piste> =
-        repo.findById(id).switchIfEmpty(Mono.error(NotFoundException("Piste $id not found")))
+class PisteService(private val repo: PisteRepository) : BaseCrudService<Piste>(repo) {
 
     fun create(req: CreatePisteRequest): Mono<Piste> =
-        repo.save(Piste(identifiant = req.identifiant, longueurM = req.longueurM, etat = req.etat ?: PisteEtat.LIBRE))
+        repo.save(Piste.create(
+            identifiant = req.identifiant,
+            longueurM = req.longueurM,
+            etat = req.etat ?: PisteEtat.LIBRE
+        ))
 
     fun updateEtat(id: UUID, req: UpdatePisteEtatRequest): Mono<Piste> =
-        get(id).flatMap { existing ->
-            val etat = req.etat
-            repo.save(existing.copy(etat = etat))
-        }
-
-    fun delete(id: UUID): Mono<Void> = repo.deleteById(id)
+        get(id).switchIfEmpty(Mono.error(NotFoundException("Piste $id not found")))
+            .flatMap { existing ->
+                repo.save(existing.copy(etat = req.etat))
+            }
 
     fun disponibles(): Flux<Piste> = repo.findByEtat(PisteEtat.LIBRE)
 }

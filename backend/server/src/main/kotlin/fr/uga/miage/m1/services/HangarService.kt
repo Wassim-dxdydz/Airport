@@ -4,6 +4,7 @@ import fr.uga.miage.m1.requests.CreateHangarRequest
 import fr.uga.miage.m1.requests.UpdateHangarRequest
 import fr.uga.miage.m1.exceptions.NotFoundException
 import fr.uga.miage.m1.models.Hangar
+import fr.uga.miage.m1.models.Avion
 import fr.uga.miage.m1.repositories.AvionRepository
 import fr.uga.miage.m1.repositories.HangarRepository
 import org.springframework.stereotype.Service
@@ -15,14 +16,14 @@ import java.util.UUID
 class HangarService(
     private val repo: HangarRepository,
     private val avions: AvionRepository
-) {
-    fun list(): Flux<Hangar> = repo.findAll()
-
-    fun get(id: UUID): Mono<Hangar> =
-        repo.findById(id).switchIfEmpty(Mono.error(NotFoundException("Hangar $id not found")))
+) : BaseCrudService<Hangar>(repo) {
 
     fun create(req: CreateHangarRequest): Mono<Hangar> =
-        repo.save(Hangar(identifiant = req.identifiant, capacite = req.capacite, etat = req.etat))
+        repo.save(Hangar.create(
+            identifiant = req.identifiant,
+            capacite = req.capacite,
+            etat = req.etat
+        ))
 
     fun update(id: UUID, req: UpdateHangarRequest): Mono<Hangar> =
         get(id).flatMap { current ->
@@ -34,7 +35,5 @@ class HangarService(
             )
         }
 
-    fun delete(id: UUID): Mono<Void> = repo.deleteById(id)
-
-    fun listAvions(hangarId: UUID) = avions.findByHangarId(hangarId)
+    fun listAvions(hangarId: UUID): Flux<Avion> = avions.findByHangarId(hangarId)
 }

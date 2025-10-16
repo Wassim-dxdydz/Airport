@@ -16,18 +16,14 @@ import java.util.UUID
 class AvionService(
     private val repo: AvionRepository,
     private val hangars: HangarRepository
-) {
-    fun list(): Flux<Avion> = repo.findAll()
-
-    fun get(id: UUID): Mono<Avion> =
-        repo.findById(id).switchIfEmpty(Mono.error(NotFoundException("Avion $id not found")))
+) : BaseCrudService<Avion>(repo) {
 
     fun create(req: CreateAvionRequest): Mono<Avion> =
         (req.hangarId?.let { hangars.existsById(it) } ?: Mono.just(true))
             .flatMap { exists ->
                 if (!exists) Mono.error(NotFoundException("Hangar ${req.hangarId} not found"))
                 else repo.save(
-                    Avion(
+                    Avion.create(
                         immatriculation = req.immatriculation,
                         type = req.type,
                         capacite = req.capacite,
@@ -53,8 +49,6 @@ class AvionService(
                 )
             }
         }
-
-    fun delete(id: UUID): Mono<Void> = repo.deleteById(id)
 
     fun assignHangar(id: UUID, hangarId: UUID): Mono<Avion> =
         hangars.existsById(hangarId).flatMap { exists ->

@@ -4,7 +4,7 @@ import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.PisteEtat
 import java.util.UUID
 
 data class PisteResponse(
-    val id: UUID,
+    val id: UUID?,
     val identifiant: String,
     val longueurM: Int,
     val etat: PisteEtat

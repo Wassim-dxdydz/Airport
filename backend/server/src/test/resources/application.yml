@@ -1,0 +1,16 @@
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/airport_test
+    username: postgres
+    password: 0205116969
+
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://localhost:5432/airport_test
+    user: postgres
+    password: 0205116969
+    clean-disabled: false
+    baseline-on-migrate: true
+
+server:
+  port: 0

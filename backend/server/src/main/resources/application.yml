@@ -4,14 +4,16 @@ spring:
 
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/${POSTGRES_DB:airport}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:0205116969}
 
   flyway:
     enabled: true
     url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:airport}
-    user: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    user: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:0205116969}
 
 server:
   port: 8080
+  ssl:
+    enabled: false

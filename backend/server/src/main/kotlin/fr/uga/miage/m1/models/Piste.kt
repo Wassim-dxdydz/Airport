@@ -10,13 +10,29 @@ import java.util.UUID
 @Table("piste")
 data class Piste(
     @Id
-    val id: UUID = UUID.randomUUID(),
+    val id: UUID? = null,
 
     val identifiant: String,
+
     @Column("longueur_m")
     val longueurM: Int,
+
     val etat: PisteEtat,
 
     @Column("created_at")
-    val createdAt: LocalDateTime? = null,
-)
+    val createdAt: LocalDateTime? = null
+) {
+    companion object {
+        fun create(
+            identifiant: String,
+            longueurM: Int,
+            etat: PisteEtat
+        ) = Piste(
+            id = null,
+            identifiant = identifiant,
+            longueurM = longueurM,
+            etat = etat,
+            createdAt = null
+        )
+    }
+}

@@ -10,12 +10,26 @@ import java.util.UUID
 @Table("hangar")
 data class Hangar(
     @Id
-    val id: UUID = UUID.randomUUID(),
+    val id: UUID? = null,
 
     val identifiant: String,
     val capacite: Int,
     val etat: HangarEtat,
 
     @Column("created_at")
-    val createdAt: LocalDateTime? = null, // filled by DB default NOW()
-)
+    val createdAt: LocalDateTime? = null
+) {
+    companion object {
+        fun create(
+            identifiant: String,
+            capacite: Int,
+            etat: HangarEtat
+        ) = Hangar(
+            id = null,
+            identifiant = identifiant,
+            capacite = capacite,
+            etat = etat,
+            createdAt = null
+        )
+    }
+}

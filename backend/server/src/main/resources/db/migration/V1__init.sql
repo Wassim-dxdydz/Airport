@@ -1,6 +1,5 @@
-
 CREATE TABLE hangar (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     identifiant VARCHAR(50) UNIQUE NOT NULL,
     capacite INT NOT NULL,
     etat VARCHAR(20) NOT NULL,
@@ -8,7 +7,7 @@ CREATE TABLE hangar (
 );
 
 CREATE TABLE piste (
-   id UUID PRIMARY KEY,
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    identifiant VARCHAR(50) UNIQUE NOT NULL,
    longueur_m INT NOT NULL,
    etat VARCHAR(20) NOT NULL,
@@ -16,7 +15,7 @@ CREATE TABLE piste (
 );
 
 CREATE TABLE avion (
-   id UUID PRIMARY KEY,
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
    immatriculation VARCHAR(32) UNIQUE NOT NULL,
    type VARCHAR(80) NOT NULL,
    capacite INT NOT NULL,
