@@ -12,5 +12,7 @@ data class VolResponse(
     val heureDepart: LocalDateTime,
     val heureArrivee: LocalDateTime,
     val etat: VolEtat,
-    val avionId: UUID?
+    val avionId: UUID?,
+    val createdAt: LocalDateTime?,
+    val updatedAt: LocalDateTime?
 )

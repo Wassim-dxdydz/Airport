@@ -16,7 +16,7 @@ import java.util.UUID
 class HangarService(
     private val repo: HangarRepository,
     private val avions: AvionRepository
-) : BaseCrudService<Hangar>(repo) {
+) : BaseCrudService<Hangar>(repo,"Hangar") {
 
     fun create(req: CreateHangarRequest): Mono<Hangar> =
         repo.save(Hangar.create(

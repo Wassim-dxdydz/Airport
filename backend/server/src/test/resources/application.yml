@@ -5,12 +5,21 @@ spring:
     password: 0205116969
 
   flyway:
-    enabled: true
+    enabled: false
     url: jdbc:postgresql://localhost:5432/airport_test
     user: postgres
     password: 0205116969
     clean-disabled: false
     baseline-on-migrate: true
+
+  sql:
+    init:
+      mode: always
+
+  logging:
+    level:
+      org.springframework.data.r2dbc: DEBUG
+      fr.uga.miage.m1: DEBUG
 
 server:
   port: 0

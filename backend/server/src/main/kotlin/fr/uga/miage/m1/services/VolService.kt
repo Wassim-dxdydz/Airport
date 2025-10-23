@@ -17,7 +17,7 @@ class VolService(
     private val repo: VolRepository,
     private val avions: AvionRepository,
     private val statusStrategy: VolStatusStrategy = DefaultVolStatusStrategy
-) : BaseCrudService<Vol>(repo) {
+) : BaseCrudService<Vol>(repo, "Vol") {
 
     fun create(req: CreateVolRequest): Mono<Vol> =
         repo.save(Vol.create(

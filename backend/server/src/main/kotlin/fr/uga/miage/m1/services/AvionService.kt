@@ -16,7 +16,7 @@ import java.util.UUID
 class AvionService(
     private val repo: AvionRepository,
     private val hangars: HangarRepository
-) : BaseCrudService<Avion>(repo) {
+) : BaseCrudService<Avion>(repo,"Avion") {
 
     fun create(req: CreateAvionRequest): Mono<Avion> =
         (req.hangarId?.let { hangars.existsById(it) } ?: Mono.just(true))

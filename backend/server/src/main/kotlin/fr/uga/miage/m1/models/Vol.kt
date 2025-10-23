@@ -1,8 +1,11 @@
 package fr.uga.miage.m1.models
 
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.VolEtat
+import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.LastModifiedDate
 import org.springframework.data.relational.core.mapping.Column
+import org.springframework.data.relational.core.mapping.InsertOnlyProperty
 import org.springframework.data.relational.core.mapping.Table
 import java.time.LocalDateTime
 import java.util.UUID
@@ -29,8 +32,14 @@ data class Vol(
     @Column("avion_id")
     val avionId: UUID? = null,
 
+    @InsertOnlyProperty  // Empêche la mise à jour de createdAt
+    @CreatedDate
     @Column("created_at")
-    val createdAt: LocalDateTime? = null
+    val createdAt: LocalDateTime? = null,
+
+    @LastModifiedDate
+    @Column("updated_at")
+    val updatedAt: LocalDateTime? = null
 ) {
     companion object {
         fun create(
@@ -50,7 +59,8 @@ data class Vol(
             heureArrivee = heureArrivee,
             etat = etat,
             avionId = avionId,
-            createdAt = null
+            createdAt = null,
+            updatedAt = null
         )
     }
 }

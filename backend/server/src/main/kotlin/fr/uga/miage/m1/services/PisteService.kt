@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono
 import java.util.UUID
 
 @Service
-class PisteService(private val repo: PisteRepository) : BaseCrudService<Piste>(repo) {
+class PisteService(private val repo: PisteRepository) : BaseCrudService<Piste>(repo, "Piste") {
 
     fun create(req: CreatePisteRequest): Mono<Piste> =
         repo.save(Piste.create(

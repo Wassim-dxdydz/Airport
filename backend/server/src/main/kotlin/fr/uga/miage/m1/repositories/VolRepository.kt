@@ -11,4 +11,8 @@ interface VolRepository : ReactiveCrudRepository<Vol, UUID> {
     fun findByNumeroVol(numeroVol: String): Mono<Vol>
     fun findByEtat(etat: VolEtat): Flux<Vol>
     fun findByAvionId(avionId: UUID): Flux<Vol>
+    fun deleteByNumeroVol(numeroVol: String): Mono<Void>
+    fun findByOrigine(origine: String): Flux<Vol>
+    fun findByDestination(destination: String): Flux<Vol>
+    fun findByOrigineAndDestination(origine: String, destination: String): Flux<Vol>
 }

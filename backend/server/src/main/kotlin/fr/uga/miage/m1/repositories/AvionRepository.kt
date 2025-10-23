@@ -11,4 +11,5 @@ interface AvionRepository : ReactiveCrudRepository<Avion, UUID> {
     fun findByImmatriculation(immatriculation: String): Mono<Avion>
     fun findByHangarId(hangarId: UUID): Flux<Avion>
     fun findByEtat(etat: AvionEtat): Flux<Avion>
+    fun deleteByImmatriculation(immatriculation: String): Mono<Void>
 }

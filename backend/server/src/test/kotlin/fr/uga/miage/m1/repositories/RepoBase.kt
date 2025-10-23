@@ -1,6 +1,8 @@
 package fr.uga.miage.m1.repositories
 
-import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.ActiveProfiles
 
-@DataR2dbcTest
+@SpringBootTest
+@ActiveProfiles("test")
 abstract class RepoBase

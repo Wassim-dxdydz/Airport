@@ -28,3 +28,23 @@ CREATE INDEX idx_piste_etat ON piste(etat);
 CREATE INDEX idx_hangar_identifiant ON hangar(identifiant);
 CREATE INDEX idx_avion_etat ON avion(etat);
 CREATE INDEX idx_avion_hangar ON avion(hangar_id);
+
+CREATE TABLE IF NOT EXISTS vol (
+                                   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    numero_vol VARCHAR(50) NOT NULL UNIQUE,
+    origine VARCHAR(3) NOT NULL,
+    destination VARCHAR(3) NOT NULL,
+    heure_depart TIMESTAMP NOT NULL,
+    heure_arrivee TIMESTAMP NOT NULL,
+    etat VARCHAR(50) NOT NULL,
+    avion_id UUID,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP,
+    FOREIGN KEY (avion_id) REFERENCES avion(id)
+    );
+
+
+CREATE INDEX idx_vol_etat ON vol(etat);
+CREATE INDEX idx_vol_avion ON vol(avion_id);
+CREATE INDEX idx_vol_numero ON vol(numero_vol);
+CREATE INDEX idx_vol_depart ON vol(heure_depart);
