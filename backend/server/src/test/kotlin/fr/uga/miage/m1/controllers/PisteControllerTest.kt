@@ -46,4 +46,61 @@ class PisteControllerTest {
             .expectBody()
             .jsonPath("$.identifiant").isEqualTo("R2")
     }
+
+    @Test
+    fun `GET by id returns 200`() {
+        val id = java.util.UUID.randomUUID()
+        val piste = Piste(identifiant = "R3", longueurM = 3000, etat = PisteEtat.MAINTENANCE)
+        every { service.get(id) } returns Mono.just(piste)
+
+        client.get().uri("/api/pistes/$id")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.identifiant").isEqualTo("R3")
+            .jsonPath("$.etat").isEqualTo("MAINTENANCE")
+    }
+
+    @Test
+    fun `PUT updateEtat returns 200`() {
+        val id = java.util.UUID.randomUUID()
+        val updated = Piste(identifiant = "R4", longueurM = 3100, etat = PisteEtat.OCCUPEE)
+        every { service.updateEtat(eq(id), any()) } returns Mono.just(updated)
+
+        client.put().uri("/api/pistes/$id/etat")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"etat":"OCCUPEE"}""")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.identifiant").isEqualTo("R4")
+            .jsonPath("$.longueurM").isEqualTo(3100)
+            .jsonPath("$.etat").isEqualTo("OCCUPEE")
+    }
+
+
+    @Test
+    fun `DELETE returns 204`() {
+        val id = java.util.UUID.randomUUID()
+        every { service.delete(id) } returns Mono.empty()
+
+        client.delete().uri("/api/pistes/$id")
+            .exchange()
+            .expectStatus().isNoContent
+            .expectBody().isEmpty
+    }
+
+    @Test
+    fun `GET disponibles returns 200 with available pistes`() {
+        val p1 = Piste(identifiant = "R5", longueurM = 3300, etat = PisteEtat.LIBRE)
+        val p2 = Piste(identifiant = "R6", longueurM = 3600, etat = PisteEtat.LIBRE)
+        every { service.disponibles() } returns Flux.just(p1, p2)
+
+        client.get().uri("/api/pistes/disponibles")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].etat").isEqualTo("LIBRE")
+            .jsonPath("$[1].etat").isEqualTo("LIBRE")
+    }
 }
