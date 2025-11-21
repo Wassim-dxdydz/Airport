@@ -2,7 +2,6 @@ package fr.uga.miage.m1.services
 
 import fr.uga.miage.m1.requests.CreateHangarRequest
 import fr.uga.miage.m1.requests.UpdateHangarRequest
-import fr.uga.miage.m1.exceptions.NotFoundException
 import fr.uga.miage.m1.models.Hangar
 import fr.uga.miage.m1.models.Avion
 import fr.uga.miage.m1.repositories.AvionRepository
