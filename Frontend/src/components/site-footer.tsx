@@ -37,9 +37,9 @@ export function SiteFooter() {
 
                 <div className="space-y-2 text-sm text-muted-foreground">
                     <h4 className="mb-3 font-semibold">Contact</h4>
-                    <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> 12 rue des Aviateurs, 75015 Paris</p>
+                    <p className="flex items-center gap-2"><MapPin className="h-4 w-4" /> 107 rue des Taillées, 38400 Grenoble</p>
                     <p className="flex items-center gap-2"><Phone className="h-4 w-4" /> +33 1 86 76 45 12</p>
-                    <p className="flex items-center gap-2"><Mail className="h-4 w-4" /> support@aeroops.example</p>
+                    <p className="flex items-center gap-2"><Mail className="h-4 w-4" /> support@aeroops.fr</p>
                     <div className="mt-3 flex gap-3 text-foreground">
                         <Link href="#" aria-label="Twitter"><Twitter className="h-4 w-4" /></Link>
                         <Link href="#" aria-label="LinkedIn"><Linkedin className="h-4 w-4" /></Link>

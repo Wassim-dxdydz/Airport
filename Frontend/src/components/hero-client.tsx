@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const WORDS = ["Avion", "Hangar", "Piste", "Vol"];
+const WORDS = ["Avions", "Hangars", "Pistes", "Vols"];
 
 export function HeroClient() {
     const [index, setIndex] = useState(0);
@@ -41,11 +41,11 @@ export function HeroClient() {
                         Pilotez vos opérations aéroportuaires.
                     </h1>
                     <p className="text-white/90 text-lg md:text-xl">
-                        Gérez{" "}
+                        Gérez vos{" "}
                         <span className="font-semibold text-primary-foreground">
               {subText}
                             <span className="animate-pulse ml-0.5">|</span>
-            </span>{" "}
+            </span>{""}
                         avec cohérence et rapidité.
                     </p>
                     <div className="flex gap-3">

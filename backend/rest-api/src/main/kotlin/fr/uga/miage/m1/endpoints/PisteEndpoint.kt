@@ -22,7 +22,7 @@ interface PisteEndpoint {
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreatePisteRequest): Mono<PisteResponse>
 
-    @PutMapping("/{id}/etat")
+    @PatchMapping("/{id}/etat")
     fun updateEtat(@PathVariable id: UUID, @RequestBody req: UpdatePisteEtatRequest): Mono<PisteResponse>
 
     @DeleteMapping("/{id}")
@@ -31,4 +31,5 @@ interface PisteEndpoint {
 
     @GetMapping("/disponibles")
     fun disponibles(): Flux<PisteResponse> // etat = LIBRE
+
 }

@@ -2,9 +2,9 @@ package fr.uga.miage.m1.exceptions
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.MethodArgumentNotValidException
-import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDateTime
 
@@ -15,7 +15,7 @@ data class ApiErrorResponse(
     val path: String? = null
 )
 
-@RestControllerAdvice
+@ControllerAdvice
 class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException::class)

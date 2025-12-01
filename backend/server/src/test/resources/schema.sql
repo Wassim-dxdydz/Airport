@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS hangar (
-    id UUID DEFAULT RANDOM_UUID() PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     identifiant VARCHAR(50) UNIQUE NOT NULL,
     capacite INT NOT NULL,
     etat VARCHAR(20) NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS hangar (
     );
 
 CREATE TABLE IF NOT EXISTS piste (
-    id UUID DEFAULT RANDOM_UUID() PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     identifiant VARCHAR(50) UNIQUE NOT NULL,
     longueur_m INT NOT NULL,
     etat VARCHAR(20) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS piste (
     );
 
 CREATE TABLE IF NOT EXISTS avion (
-    id UUID DEFAULT RANDOM_UUID() PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     immatriculation VARCHAR(32) UNIQUE NOT NULL,
     type VARCHAR(80) NOT NULL,
     capacite INT NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS avion (
     );
 
 CREATE TABLE IF NOT EXISTS vol (
-    id UUID DEFAULT RANDOM_UUID() PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     numero_vol VARCHAR(50) NOT NULL UNIQUE,
     origine VARCHAR(3) NOT NULL,
     destination VARCHAR(3) NOT NULL,
@@ -34,6 +34,5 @@ CREATE TABLE IF NOT EXISTS vol (
     etat VARCHAR(50) NOT NULL,
     avion_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
-    FOREIGN KEY (avion_id) REFERENCES avion(id)
+    updated_at TIMESTAMP
     );
