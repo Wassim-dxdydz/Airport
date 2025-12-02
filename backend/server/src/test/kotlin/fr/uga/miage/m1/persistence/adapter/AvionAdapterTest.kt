@@ -102,4 +102,25 @@ class AvionAdapterTest {
 
         verify { repo.deleteById(id) }
     }
+
+    @Test
+    fun `findByEtat maps entities to domain`() {
+        val e1 = AvionEntity(
+            id = UUID.randomUUID(),
+            immatriculation = "F-GRNB",
+            type = "A320",
+            capacite = 180,
+            etat = AvionEtat.EN_SERVICE,
+            hangarId = null
+        )
+
+        every { repo.findByEtat(AvionEtat.EN_SERVICE) } returns Flux.just(e1)
+
+        StepVerifier.create(adapter.findByEtat(AvionEtat.EN_SERVICE))
+            .expectNextMatches { it.immatriculation == "F-GRNB" && it.type == "A320" }
+            .verifyComplete()
+
+        verify { repo.findByEtat(AvionEtat.EN_SERVICE) }
+    }
+
 }

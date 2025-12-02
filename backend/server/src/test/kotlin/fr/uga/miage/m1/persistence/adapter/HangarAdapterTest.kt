@@ -70,4 +70,39 @@ class HangarAdapterTest {
             .expectNext(true)
             .verifyComplete()
     }
+
+    @Test
+    fun `findByIdentifiant maps correctly`() {
+        val entity = HangarEntity(UUID.randomUUID(), "H1", 20, HangarEtat.DISPONIBLE)
+
+        every { repo.findByIdentifiant("H1") } returns Mono.just(entity)
+
+        StepVerifier.create(adapter.findByIdentifiant("H1"))
+            .expectNextMatches { it.identifiant == "H1" && it.capacite == 20 }
+            .verifyComplete()
+
+        verify { repo.findByIdentifiant("H1") }
+    }
+
+    @Test
+    fun `deleteByIdentifiant delegates to repo`() {
+        every { repo.deleteByIdentifiant("H1") } returns Mono.empty()
+
+        StepVerifier.create(adapter.deleteByIdentifiant("H1"))
+            .verifyComplete()
+
+        verify { repo.deleteByIdentifiant("H1") }
+    }
+
+    @Test
+    fun `deleteById delegates`() {
+        val id = UUID.randomUUID()
+        every { repo.deleteById(id) } returns Mono.empty()
+
+        StepVerifier.create(adapter.deleteById(id))
+            .verifyComplete()
+
+        verify { repo.deleteById(id) }
+    }
+
 }

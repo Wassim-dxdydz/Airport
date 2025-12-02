@@ -7,6 +7,7 @@ import fr.uga.miage.m1.requests.CreateAvionRequest
 import fr.uga.miage.m1.responses.AvionResponse
 import fr.uga.miage.m1.domain.model.Avion
 import fr.uga.miage.m1.app.mapper.AvionMapper
+import fr.uga.miage.m1.requests.UpdateAvionRequest
 import io.mockk.every
 import io.mockk.verify
 import org.junit.jupiter.api.Test
@@ -92,4 +93,100 @@ class AvionControllerTest(
 
         verify { avionService.create(any()) }
     }
+
+    @Test
+    fun `PUT update avion`() {
+        val id = UUID.randomUUID()
+
+        val existing = Avion(
+            id = id,
+            immatriculation = "F-GRNB",
+            type = "A320",
+            capacite = 180,
+            etat = AvionEtat.EN_SERVICE,
+            hangarId = null
+        )
+
+        val req = UpdateAvionRequest(type = "A321", capacite = 200)
+
+        val updated = existing.copy(type = "A321", capacite = 200)
+
+        every { avionService.get(id) } returns Mono.just(existing)
+        every { avionService.update(id, any()) } returns Mono.just(updated)
+
+        client.put().uri("$baseUrl/$id")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(req)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(AvionResponse::class.java)
+            .consumeWith {
+                assert(it.responseBody!!.type == "A321")
+            }
+
+        verify { avionService.update(id, any()) }
+    }
+
+    @Test
+    fun `DELETE avion`() {
+        val id = UUID.randomUUID()
+
+        every { avionService.delete(id) } returns Mono.empty()
+
+        client.delete().uri("$baseUrl/$id")
+            .exchange()
+            .expectStatus().isNoContent
+
+        verify { avionService.delete(id) }
+    }
+
+    @Test
+    fun `POST assign hangar to avion`() {
+        val id = UUID.randomUUID()
+        val hangarId = UUID.randomUUID()
+
+        val updated = Avion(
+            id = id,
+            immatriculation = "F-GRNB",
+            type = "A320",
+            capacite = 180,
+            etat = AvionEtat.EN_SERVICE,
+            hangarId = hangarId
+        )
+
+        every { avionService.assignHangar(id, hangarId) } returns Mono.just(updated)
+
+        client.post().uri("$baseUrl/$id/assign-hangar/$hangarId")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(AvionResponse::class.java)
+            .consumeWith { assert(it.responseBody!!.hangarId == hangarId) }
+
+        verify { avionService.assignHangar(id, hangarId) }
+    }
+
+    @Test
+    fun `POST unassign hangar from avion`() {
+        val id = UUID.randomUUID()
+
+        val updated = Avion(
+            id = id,
+            immatriculation = "F-GRNB",
+            type = "A320",
+            capacite = 180,
+            etat = AvionEtat.EN_SERVICE,
+            hangarId = null
+        )
+
+        every { avionService.unassignHangar(id) } returns Mono.just(updated)
+
+        client.post().uri("$baseUrl/$id/unassign-hangar")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(AvionResponse::class.java)
+            .consumeWith { assert(it.responseBody!!.hangarId == null) }
+
+        verify { avionService.unassignHangar(id) }
+    }
+
 }

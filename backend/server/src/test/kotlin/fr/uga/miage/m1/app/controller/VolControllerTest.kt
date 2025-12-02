@@ -6,6 +6,7 @@ import fr.uga.miage.m1.config.MockServiceConfig
 import fr.uga.miage.m1.domain.model.Vol
 import fr.uga.miage.m1.domain.service.VolService
 import fr.uga.miage.m1.requests.CreateVolRequest
+import fr.uga.miage.m1.requests.UpdateVolRequest
 import fr.uga.miage.m1.responses.VolResponse
 import io.mockk.every
 import io.mockk.verify
@@ -112,4 +113,165 @@ class VolControllerTest(
 
         verify { volService.assignAvion(id, avionId) }
     }
+
+    @Test
+    fun `GET vol by id`() {
+        val id = UUID.randomUUID()
+        val now = LocalDateTime.now()
+
+        val v = Vol(
+            id = id,
+            numeroVol = "AF123",
+            origine = "CDG",
+            destination = "MAD",
+            heureDepart = now,
+            heureArrivee = now.plusHours(2),
+            etat = VolEtat.PREVU,
+            avionId = null
+        )
+
+        every { volService.get(id) } returns Mono.just(v)
+
+        client.get().uri("$base/$id")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(VolResponse::class.java)
+            .consumeWith {
+                assert(it.responseBody!!.numeroVol == "AF123")
+            }
+
+        verify { volService.get(id) }
+    }
+
+    @Test
+    fun `PUT update vol`() {
+        val id = UUID.randomUUID()
+        val now = LocalDateTime.now()
+
+        val existing = Vol(
+            id = id,
+            numeroVol = "AF123",
+            origine = "CDG",
+            destination = "MAD",
+            heureDepart = now,
+            heureArrivee = now.plusHours(2),
+            etat = VolEtat.PREVU,
+            avionId = null
+        )
+
+        val req = UpdateVolRequest(destination = "JFK")
+
+        val updated = existing.copy(destination = "JFK")
+
+        every { volService.get(id) } returns Mono.just(existing)
+        every { volService.update(id, any()) } returns Mono.just(updated)
+
+        client.put().uri("$base/$id")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(req)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(VolResponse::class.java)
+            .consumeWith {
+                assert(it.responseBody!!.destination == "JFK")
+            }
+
+        verify { volService.update(id, any()) }
+    }
+
+    @Test
+    fun `DELETE vol`() {
+        val id = UUID.randomUUID()
+
+        every { volService.delete(id) } returns Mono.empty()
+
+        client.delete().uri("$base/$id")
+            .exchange()
+            .expectStatus().isNoContent
+
+        verify { volService.delete(id) }
+    }
+
+    @Test
+    fun `POST unassign avion`() {
+        val id = UUID.randomUUID()
+        val now = LocalDateTime.now()
+
+        val updated = Vol(
+            id = id,
+            numeroVol = "AF123",
+            origine = "CDG",
+            destination = "MAD",
+            heureDepart = now,
+            heureArrivee = now.plusHours(2),
+            etat = VolEtat.PREVU,
+            avionId = null
+        )
+
+        every { volService.unassignAvion(id) } returns Mono.just(updated)
+
+        client.post().uri("$base/$id/unassign-avion")
+            .exchange()
+            .expectStatus().isOk
+
+        verify { volService.unassignAvion(id) }
+    }
+
+    @Test
+    fun `PATCH update vol etat`() {
+        val id = UUID.randomUUID()
+        val now = LocalDateTime.now()
+
+        val updated = Vol(
+            id = id,
+            numeroVol = "AF123",
+            origine = "CDG",
+            destination = "MAD",
+            heureDepart = now,
+            heureArrivee = now.plusHours(2),
+            etat = VolEtat.DECOLLE,
+            avionId = null
+        )
+
+        every { volService.updateEtat(id, VolEtat.DECOLLE) } returns Mono.just(updated)
+
+        client.patch().uri("$base/$id/etat")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(VolEtat.DECOLLE)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(VolResponse::class.java)
+            .consumeWith {
+                assert(it.responseBody!!.etat == VolEtat.DECOLLE)
+            }
+
+        verify { volService.updateEtat(id, VolEtat.DECOLLE) }
+    }
+
+    @Test
+    fun `GET vols by etat`() {
+        val now = LocalDateTime.now()
+
+        val v = Vol(
+            id = UUID.randomUUID(),
+            numeroVol = "AF321",
+            origine = "LYS",
+            destination = "MAD",
+            heureDepart = now,
+            heureArrivee = now.plusHours(2),
+            etat = VolEtat.PREVU,
+            avionId = null
+        )
+
+        every { volService.listByEtat(VolEtat.PREVU) } returns Flux.just(v)
+
+        client.get().uri("$base/etat/PREVU")
+            .exchange()
+            .expectStatus().isOk
+            .expectBodyList(VolResponse::class.java)
+            .hasSize(1)
+
+        verify { volService.listByEtat(VolEtat.PREVU) }
+    }
+
 }

@@ -134,4 +134,18 @@ class HangarControllerTest(
 
         verify { hangarService.listAvions(id) }
     }
+
+    @Test
+    fun `DELETE hangar`() {
+        val id = UUID.randomUUID()
+
+        every { hangarService.delete(id) } returns Mono.empty()
+
+        client.delete().uri("$base/$id")
+            .exchange()
+            .expectStatus().isNoContent   // Because @ResponseStatus(HttpStatus.NO_CONTENT)
+
+        verify { hangarService.delete(id) }
+    }
+
 }

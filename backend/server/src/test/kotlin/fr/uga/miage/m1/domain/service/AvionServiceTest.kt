@@ -100,4 +100,62 @@ class AvionServiceTest {
             .expectNextMatches { it.hangarId == hId }
             .verifyComplete()
     }
+
+    @Test
+    fun `create succeeds when hangarId is null`() {
+        val avion = Avion(null, "F-GRNB", "A320", 180, AvionEtat.EN_SERVICE, null)
+        val saved = avion.copy(id = UUID.randomUUID())
+
+        every { avionPort.save(avion) } returns Mono.just(saved)
+
+        StepVerifier.create(service.create(avion))
+            .expectNext(saved)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `update succeeds when avion exists and hangarId is null`() {
+        val id = UUID.randomUUID()
+        val current = Avion(id, "F-GRNB", "A320", 180, AvionEtat.EN_SERVICE, null)
+        val new = Avion(null, "F-GRNB", "A330", 200, AvionEtat.EN_SERVICE, null)
+        val updated = current.copy(type = "A330", capacite = 200)
+
+        every { avionPort.findById(id) } returns Mono.just(current)
+        every { avionPort.save(updated) } returns Mono.just(updated)
+
+        StepVerifier.create(service.update(id, new))
+            .expectNext(updated)
+            .verifyComplete()
+
+        verify(exactly = 0) { hangarPort.existsById(any()) }
+    }
+
+
+    @Test
+    fun `delete delegates to port`() {
+        val id = UUID.randomUUID()
+
+        every { avionPort.deleteById(id) } returns Mono.empty()
+
+        StepVerifier.create(service.delete(id))
+            .verifyComplete()
+
+        verify { avionPort.deleteById(id) }
+    }
+
+    @Test
+    fun `unassignHangar clears hangarId`() {
+        val id = UUID.randomUUID()
+        val current = Avion(id, "F-GRNB", "A320", 180, AvionEtat.EN_SERVICE, UUID.randomUUID())
+        val updated = current.copy(hangarId = null)
+
+        every { avionPort.findById(id) } returns Mono.just(current)
+        every { avionPort.save(updated) } returns Mono.just(updated)
+
+        StepVerifier.create(service.unassignHangar(id))
+            .expectNextMatches { it.hangarId == null }
+            .verifyComplete()
+    }
+
+
 }

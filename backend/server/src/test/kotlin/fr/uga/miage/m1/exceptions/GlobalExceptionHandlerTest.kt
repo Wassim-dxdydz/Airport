@@ -1,57 +1,76 @@
 package fr.uga.miage.m1.exceptions
 
+import org.junit.jupiter.api.Test
+import org.springframework.core.MethodParameter
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.ControllerAdvice
-import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.validation.BeanPropertyBindingResult
+import org.springframework.validation.FieldError
 import org.springframework.web.server.ResponseStatusException
-import java.time.LocalDateTime
+import kotlin.test.assertEquals
 
-data class ApiErrorResponse(
-    val status: Int,
-    val message: String,
-    val timestamp: LocalDateTime = LocalDateTime.now(),
-    val path: String? = null
-)
+class GlobalExceptionHandlerTest {
 
-@ControllerAdvice
-class GlobalExceptionHandler {
+    private val handler = GlobalExceptionHandler()
 
-    @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ApiErrorResponse> {
-        val errors = ex.bindingResult.fieldErrors.joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
-        return ResponseEntity(
-            ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), "Validation error: $errors"),
-            HttpStatus.BAD_REQUEST
-        )
+    class DummyClass {
+        fun dummyMethod(field: String) {}
     }
 
-    @ExceptionHandler(ResponseStatusException::class)
-    fun handleResponseStatus(ex: ResponseStatusException): ResponseEntity<ApiErrorResponse> =
-        ResponseEntity(
-            ApiErrorResponse(ex.statusCode.value(), ex.reason ?: "Erreur de requête"),
-            ex.statusCode
-        )
+    @Test
+    fun `handle validation exception returns BAD_REQUEST`() {
+        val target = Any()
+        val binding = BeanPropertyBindingResult(target, "req")
+        binding.addError(FieldError("req", "field", "must not be blank"))
 
-    @ExceptionHandler(IllegalArgumentException::class)
-    fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ApiErrorResponse> =
-        ResponseEntity(
-            ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.message ?: "Requête invalide"),
-            HttpStatus.BAD_REQUEST
-        )
+        val method = DummyClass::class.java.getMethod("dummyMethod", String::class.java)
+        val methodParameter = MethodParameter(method, 0)
 
-    @ExceptionHandler(NotFoundException::class)
-    fun handleNotFound(ex: NotFoundException): ResponseEntity<ApiErrorResponse> =
-        ResponseEntity(
-            ApiErrorResponse(HttpStatus.NOT_FOUND.value(), ex.message ?: "Ressource non trouvée"),
-            HttpStatus.NOT_FOUND
-        )
+        val ex = MethodArgumentNotValidException(methodParameter, binding)
 
-    @ExceptionHandler(Exception::class)
-    fun handleGeneric(ex: Exception): ResponseEntity<ApiErrorResponse> =
-        ResponseEntity(
-            ApiErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Erreur interne du serveur"),
-            HttpStatus.INTERNAL_SERVER_ERROR
-        )
+        val response = handler.handleValidation(ex)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assert(response.body!!.message.contains("field: must not be blank"))
+    }
+
+    @Test
+    fun `handle ResponseStatusException returns same status`() {
+        val ex = ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied")
+
+        val response = handler.handleResponseStatus(ex)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals("Access denied", response.body!!.message)
+    }
+
+    @Test
+    fun `handle IllegalArgumentException returns BAD_REQUEST`() {
+        val ex = IllegalArgumentException("Invalid argument")
+
+        val response = handler.handleIllegalArgument(ex)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals("Invalid argument", response.body!!.message)
+    }
+
+    @Test
+    fun `handle NotFoundException returns NOT_FOUND`() {
+        val ex = NotFoundException("Hangar not found")
+
+        val response = handler.handleNotFound(ex)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals("Hangar not found", response.body!!.message)
+    }
+
+    @Test
+    fun `handle generic exception returns INTERNAL_SERVER_ERROR`() {
+        val ex = Exception("Something went wrong")
+
+        val response = handler.handleGeneric(ex)
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
+        assertEquals(500, response.body!!.status)
+    }
 }

@@ -55,4 +55,26 @@ class AvionMapperTest {
         assertEquals(180, updated.capacite)
         assertEquals(AvionEtat.EN_SERVICE, updated.etat)
     }
+
+    @Test
+    fun `toResponse maps Avion domain to AvionResponse`() {
+        val avion = Avion(
+            id = UUID.randomUUID(),
+            immatriculation = "F-GRNB",
+            type = "A320",
+            capacite = 180,
+            etat = AvionEtat.EN_SERVICE,
+            hangarId = UUID.randomUUID()
+        )
+
+        val resp = AvionMapper.toResponse(avion)
+
+        assertEquals(avion.id, resp.id)
+        assertEquals("F-GRNB", resp.immatriculation)
+        assertEquals("A320", resp.type)
+        assertEquals(180, resp.capacite)
+        assertEquals(AvionEtat.EN_SERVICE, resp.etat)
+        assertEquals(avion.hangarId, resp.hangarId)
+    }
+
 }

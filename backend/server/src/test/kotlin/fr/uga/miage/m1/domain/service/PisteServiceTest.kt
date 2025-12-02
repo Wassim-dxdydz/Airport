@@ -34,6 +34,35 @@ class PisteServiceTest {
     }
 
     @Test
+    fun `get returns piste when found`() {
+        val id = UUID.randomUUID()
+        val p = Piste(id, "R1", 3000, PisteEtat.LIBRE)
+
+        every { pistePort.findById(id) } returns Mono.just(p)
+
+        StepVerifier.create(service.get(id))
+            .expectNext(p)
+            .verifyComplete()
+
+        verify { pistePort.findById(id) }
+    }
+
+    @Test
+    fun `create saves piste`() {
+        val p = Piste(null, "R2", 2500, PisteEtat.LIBRE)
+        val saved = p.copy(id = UUID.randomUUID())
+
+        every { pistePort.save(p) } returns Mono.just(saved)
+
+        StepVerifier.create(service.create(p))
+            .expectNext(saved)
+            .verifyComplete()
+
+        verify { pistePort.save(p) }
+    }
+
+
+    @Test
     fun `updateEtat updates piste status`() {
         val id = UUID.randomUUID()
         val current = Piste(id, "R1", 3000, PisteEtat.LIBRE)
@@ -46,4 +75,17 @@ class PisteServiceTest {
             .expectNext(updated)
             .verifyComplete()
     }
+
+    @Test
+    fun `delete delegates to port`() {
+        val id = UUID.randomUUID()
+
+        every { pistePort.deleteById(id) } returns Mono.empty()
+
+        StepVerifier.create(service.delete(id))
+            .verifyComplete()
+
+        verify { pistePort.deleteById(id) }
+    }
+
 }

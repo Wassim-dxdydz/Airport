@@ -29,10 +29,7 @@ class PisteController(
             .map(PisteMapper::toResponse)
 
     override fun updateEtat(id: UUID, req: UpdatePisteEtatRequest): Mono<PisteResponse> =
-        pisteService.get(id)
-            .flatMap { existing ->
-                pisteService.updateEtat(id, req.etat)
-            }
+        pisteService.updateEtat(id, req.etat)
             .map(PisteMapper::toResponse)
 
     override fun delete(id: UUID): Mono<Void> =

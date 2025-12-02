@@ -18,7 +18,7 @@ object HangarMapper {
     fun toUpdatedDomain(current: Hangar, req: UpdateHangarRequest): Hangar =
         Hangar(
             id = current.id,
-            identifiant = current.identifiant, // identifiant never changes
+            identifiant = current.identifiant,
             capacite = req.capacite ?: current.capacite,
             etat = req.etat ?: current.etat
         )

@@ -86,4 +86,56 @@ class PisteControllerTest(
 
         verify { pisteService.updateEtat(id, req.etat) }
     }
+
+    @Test
+    fun `GET piste by id`() {
+        val id = UUID.randomUUID()
+        val p = Piste(id, "R1", 3200, PisteEtat.LIBRE)
+
+        every { pisteService.get(id) } returns Mono.just(p)
+
+        client.get().uri("$base/$id")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody(PisteResponse::class.java)
+            .consumeWith {
+                assert(it.responseBody!!.identifiant == "R1")
+            }
+
+        verify { pisteService.get(id) }
+    }
+
+    @Test
+    fun `DELETE piste`() {
+        val id = UUID.randomUUID()
+
+        every { pisteService.delete(id) } returns Mono.empty()
+
+        client.delete().uri("$base/$id")
+            .exchange()
+            .expectStatus().isNoContent
+
+        verify { pisteService.delete(id) }
+    }
+
+    @Test
+    fun `GET pistes disponibles`() {
+        val available = Piste(
+            id = UUID.randomUUID(),
+            identifiant = "R2",
+            longueurM = 3500,
+            etat = PisteEtat.LIBRE
+        )
+
+        every { pisteService.disponibles() } returns Flux.just(available)
+
+        client.get().uri("$base/disponibles")
+            .exchange()
+            .expectStatus().isOk
+            .expectBodyList(PisteResponse::class.java)
+            .hasSize(1)
+
+        verify { pisteService.disponibles() }
+    }
+
 }

@@ -9,7 +9,7 @@ object AvionMapper {
     fun toDomain(req: CreateAvionRequest): Avion =
         Avion(
             id = null,
-            immatriculation = req.immatriculation.uppercase(),  // normalize ID
+            immatriculation = req.immatriculation.uppercase(),
             type = req.type,
             capacite = req.capacite,
             etat = req.etat,
@@ -19,7 +19,7 @@ object AvionMapper {
     fun toUpdatedDomain(current: Avion, req: UpdateAvionRequest): Avion =
         Avion(
             id = current.id,
-            immatriculation = current.immatriculation, // cannot change immatriculation
+            immatriculation = current.immatriculation,
             type = req.type ?: current.type,
             capacite = req.capacite ?: current.capacite,
             etat = req.etat ?: current.etat,

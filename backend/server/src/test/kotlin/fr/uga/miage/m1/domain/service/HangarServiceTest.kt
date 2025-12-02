@@ -1,5 +1,6 @@
 package fr.uga.miage.m1.domain.service
 
+import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.AvionEtat
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.HangarEtat
 import fr.uga.miage.m1.domain.model.Hangar
 import fr.uga.miage.m1.domain.port.HangarDataPort
@@ -47,7 +48,21 @@ class HangarServiceTest {
     }
 
     @Test
-    fun `update updates hangar`() {
+    fun `create saves and returns hangar`() {
+        val h = Hangar(null, "H1", 10, HangarEtat.DISPONIBLE)
+        val saved = h.copy(id = UUID.randomUUID())
+
+        every { hangarPort.save(h) } returns Mono.just(saved)
+
+        StepVerifier.create(service.create(h))
+            .expectNext(saved)
+            .verifyComplete()
+
+        verify { hangarPort.save(h) }
+    }
+
+    @Test
+    fun `update hangar`() {
         val id = UUID.randomUUID()
         val current = Hangar(id, "H1", 10, HangarEtat.DISPONIBLE)
         val updated = current.copy(capacite = 20)
@@ -59,4 +74,33 @@ class HangarServiceTest {
             .expectNext(updated)
             .verifyComplete()
     }
+
+    @Test
+    fun `delete delegates to port`() {
+        val id = UUID.randomUUID()
+
+        every { hangarPort.deleteById(id) } returns Mono.empty()
+
+        StepVerifier.create(service.delete(id))
+            .verifyComplete()
+
+        verify { hangarPort.deleteById(id) }
+    }
+
+
+    @Test
+    fun `listAvions returns only avions in hangar`() {
+        val id = UUID.randomUUID()
+        val a1 = fr.uga.miage.m1.domain.model.Avion(UUID.randomUUID(), "A", "T", 10, AvionEtat.EN_SERVICE, id)
+        val a2 = fr.uga.miage.m1.domain.model.Avion(UUID.randomUUID(), "B", "U", 20, AvionEtat.EN_SERVICE, null)
+
+        every { avionPort.findAll() } returns Flux.just(a1, a2)
+
+        StepVerifier.create(service.listAvions(id))
+            .expectNext(a1)
+            .verifyComplete()
+
+        verify { avionPort.findAll() }
+    }
+
 }
