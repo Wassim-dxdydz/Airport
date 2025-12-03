@@ -14,7 +14,7 @@ interface PisteDataPort {
 
     fun save(piste: Piste): Mono<Piste>
 
-    fun deleteById(id: UUID): Mono<Void>
+    fun deleteById(id: UUID): Mono<Unit>
 
     fun findByEtat(etat: PisteEtat): Flux<Piste>
 

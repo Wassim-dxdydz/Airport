@@ -4,12 +4,12 @@
 
     <parent>
         <groupId>fr.uga.miage.m1</groupId>
-        <artifactId>PC-PROJECT</artifactId>
+        <artifactId>pc-strawhats</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>rest-api</artifactId>
-    <name>PC-PROJECT - rest-api</name>
+    <name>pc-strawhats - rest-api</name>
 
     <properties>
         <sonar.coverage.exclusions>**/*</sonar.coverage.exclusions>
@@ -22,8 +22,8 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-web</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
         <dependency>
             <groupId>jakarta.validation</groupId>

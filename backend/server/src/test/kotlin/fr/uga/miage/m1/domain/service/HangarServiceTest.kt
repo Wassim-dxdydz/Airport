@@ -78,14 +78,24 @@ class HangarServiceTest {
     @Test
     fun `delete delegates to port`() {
         val id = UUID.randomUUID()
+        val hangar = Hangar(id, "H1", 10, HangarEtat.DISPONIBLE)
 
-        every { hangarPort.deleteById(id) } returns Mono.empty()
+        every { hangarPort.findById(id) } returns Mono.just(hangar)
+        every { avionPort.findAll() } returns Flux.empty()
+        every { hangarPort.deleteById(id) } returns Mono.just(Unit)
 
         StepVerifier.create(service.delete(id))
+            .expectNext(Unit)
             .verifyComplete()
 
-        verify { hangarPort.deleteById(id) }
+        verify {
+            hangarPort.findById(id)
+            avionPort.findAll()
+            hangarPort.deleteById(id)
+        }
     }
+
+
 
 
     @Test

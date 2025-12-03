@@ -89,6 +89,7 @@ class HangarAdapterTest {
         every { repo.deleteByIdentifiant("H1") } returns Mono.empty()
 
         StepVerifier.create(adapter.deleteByIdentifiant("H1"))
+            .expectNext(Unit)
             .verifyComplete()
 
         verify { repo.deleteByIdentifiant("H1") }
@@ -100,6 +101,7 @@ class HangarAdapterTest {
         every { repo.deleteById(id) } returns Mono.empty()
 
         StepVerifier.create(adapter.deleteById(id))
+            .expectNext(Unit)
             .verifyComplete()
 
         verify { repo.deleteById(id) }

@@ -26,11 +26,11 @@ class HangarAdapter(
     override fun save(hangar: Hangar): Mono<Hangar> =
         repo.save(hangar.toEntity()).map { it.toDomain() }
 
-    override fun deleteById(id: UUID): Mono<Void> =
-        repo.deleteById(id)
+    override fun deleteById(id: UUID): Mono<Unit> =
+        repo.deleteById(id).thenReturn(Unit)
 
-    override fun deleteByIdentifiant(identifiant: String): Mono<Void> =
-        repo.deleteByIdentifiant(identifiant)
+    override fun deleteByIdentifiant(identifiant: String): Mono<Unit> =
+        repo.deleteByIdentifiant(identifiant).thenReturn(Unit)
 
     override fun existsById(id: UUID): Mono<Boolean> =
         repo.existsById(id)

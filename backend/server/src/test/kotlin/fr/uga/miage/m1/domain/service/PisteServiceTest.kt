@@ -79,13 +79,19 @@ class PisteServiceTest {
     @Test
     fun `delete delegates to port`() {
         val id = UUID.randomUUID()
+        val piste = Piste(id, "R1", 3000, PisteEtat.LIBRE)
 
-        every { pistePort.deleteById(id) } returns Mono.empty()
+        every { pistePort.findById(id) } returns Mono.just(piste)
+        every { pistePort.deleteById(id) } returns Mono.just(Unit)
 
         StepVerifier.create(service.delete(id))
+            .expectNext(Unit)
             .verifyComplete()
 
-        verify { pistePort.deleteById(id) }
+        verify {
+            pistePort.findById(id)
+            pistePort.deleteById(id)
+        }
     }
 
 }

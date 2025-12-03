@@ -23,8 +23,8 @@ class PisteAdapter(
     override fun save(piste: Piste): Mono<Piste> =
         repo.save(piste.toEntity()).map { it.toDomain() }
 
-    override fun deleteById(id: UUID): Mono<Void> =
-        repo.deleteById(id)
+    override fun deleteById(id: UUID): Mono<Unit> =
+        repo.deleteById(id).thenReturn(Unit)
 
     override fun findByEtat(etat: backend.common.src.main.kotlin.fr.uga.miage.m1.enums.PisteEtat): Flux<Piste> =
         repo.findByEtat(etat).map { it.toDomain() }

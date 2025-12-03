@@ -4,12 +4,12 @@
 
     <parent>
         <groupId>fr.uga.miage.m1</groupId>
-        <artifactId>PC-PROJECT</artifactId>
+        <artifactId>pc-strawhats</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>common</artifactId>
-    <name>PC-PROJECT - common</name>
+    <name>pc-strawhats - common</name>
 
     <properties>
         <sonar.coverage.exclusions>**/*</sonar.coverage.exclusions>

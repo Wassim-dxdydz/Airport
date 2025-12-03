@@ -2,8 +2,11 @@ package fr.uga.miage.m1.domain.service
 
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.VolEtat
 import fr.uga.miage.m1.domain.model.Vol
+import fr.uga.miage.m1.domain.model.VolHistory
 import fr.uga.miage.m1.domain.port.AvionDataPort
+import fr.uga.miage.m1.domain.port.PisteDataPort
 import fr.uga.miage.m1.domain.port.VolDataPort
+import fr.uga.miage.m1.domain.port.VolHistoryDataPort
 import fr.uga.miage.m1.exceptions.NotFoundException
 import io.mockk.*
 import org.junit.jupiter.api.BeforeEach
@@ -19,6 +22,10 @@ class VolServiceTest {
     private lateinit var volPort: VolDataPort
     private lateinit var avionPort: AvionDataPort
     private lateinit var strategy: VolStatusStrategy
+    private lateinit var pistePort: PisteDataPort
+    private lateinit var volHistoryPort: VolHistoryDataPort
+    private lateinit var syncService: SharedVolSyncService
+
     private lateinit var service: VolService
 
     @BeforeEach
@@ -26,7 +33,27 @@ class VolServiceTest {
         volPort = mockk()
         avionPort = mockk()
         strategy = mockk()
-        service = VolService(volPort, avionPort, strategy)
+        pistePort = mockk()
+        volHistoryPort = mockk()
+        syncService = mockk()
+
+        // THE IMPORTANT FIX
+        every { volHistoryPort.save(any()) } returns Mono.just(
+            VolHistory(
+                id = UUID.randomUUID(),
+                volId = UUID.randomUUID(),
+                etat = VolEtat.PREVU
+            )
+        )
+
+        service = VolService(
+            volPort,
+            avionPort,
+            syncService,
+            volHistoryPort,
+            strategy,
+            pistePort
+        )
     }
 
     @Test
@@ -34,7 +61,7 @@ class VolServiceTest {
         val v = Vol(
             UUID.randomUUID(), "AF1000", "CDG", "MAD",
             LocalDateTime.now(), LocalDateTime.now().plusHours(2),
-            VolEtat.PREVU, null
+            VolEtat.PREVU, null, null
         )
 
         every { volPort.findAll() } returns Flux.just(v)
@@ -49,7 +76,7 @@ class VolServiceTest {
         val id = UUID.randomUUID()
         val v = Vol(id, "AF1001", "CDG", "NYC",
             LocalDateTime.now(), LocalDateTime.now().plusHours(7),
-            VolEtat.PREVU, null)
+            VolEtat.PREVU, null, null)
 
         every { volPort.findById(id) } returns Mono.just(v)
 
@@ -70,7 +97,8 @@ class VolServiceTest {
     }
 
     @Test
-    fun `create sets etat PREVU and saves`() {
+    fun `create sets etat PREVU, saves and pushes to partner`() {
+
         val now = LocalDateTime.now()
         val vol = Vol(
             id = null,
@@ -80,48 +108,51 @@ class VolServiceTest {
             heureDepart = now.plusHours(1),
             heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         val saved = vol.copy(id = UUID.randomUUID())
 
         every { volPort.save(any()) } returns Mono.just(saved)
+        every { syncService.pushToPartner(saved) } returns Mono.empty()
 
         StepVerifier.create(service.create(vol))
             .expectNext(saved)
             .verifyComplete()
 
-        verify {
-            volPort.save(match {
-                it.numeroVol == "AF2000" && it.etat == VolEtat.PREVU
-            })
-        }
+        verify { volPort.save(match { it.numeroVol == "AF2000" }) }
+        verify { syncService.pushToPartner(saved) }
+        verify { volHistoryPort.save(any()) }
     }
 
     @Test
-    fun `update merges fields and saves`() {
+    fun `update merges fields, saves and pushes to partner`() {
+
         val id = UUID.randomUUID()
         val now = LocalDateTime.now()
 
         val existing = Vol(
             id, "AF3000", "LYS", "CDG",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.PREVU, null
+            VolEtat.PREVU, null, null
         )
 
         val updated = existing.copy(origine = "MRS")
 
         every { volPort.findById(id) } returns Mono.just(existing)
         every { volPort.save(any()) } returns Mono.just(updated)
+        every { syncService.pushToPartner(updated) } returns Mono.empty()
 
         StepVerifier.create(service.update(id, updated))
             .expectNext(updated)
             .verifyComplete()
 
-        verify {
-            volPort.save(match { it.origine == "MRS" })
-        }
+        verify { volPort.save(match { it.origine == "MRS" }) }
+        verify { syncService.pushToPartner(updated) }
+        verify { volHistoryPort.save(any()) }
     }
+
 
     @Test
     fun `assignAvion fails if avion not found`() {
@@ -144,7 +175,7 @@ class VolServiceTest {
         val current = Vol(
             volId, "AF4000", "CDG", "MAD",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.PREVU, null
+            VolEtat.PREVU, null, null
         )
 
         val updated = current.copy(avionId = avionId)
@@ -166,7 +197,7 @@ class VolServiceTest {
         val current = Vol(
             id, "AF5000", "MAD", "CDG",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.PREVU, UUID.randomUUID()
+            VolEtat.PREVU, UUID.randomUUID(), UUID.randomUUID()
         )
 
         val updated = current.copy(avionId = null)
@@ -186,7 +217,7 @@ class VolServiceTest {
         val current = Vol(
             id, "AF6000", "CDG", "LIS",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.EN_ATTENTE, null
+            VolEtat.EN_ATTENTE, null, null
         )
 
         val target = VolEtat.EMBARQUEMENT
@@ -209,7 +240,7 @@ class VolServiceTest {
         val current = Vol(
             id, "AF6001", "LIS", "CDG",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.ARRIVE, null
+            VolEtat.ARRIVE, null, null
         )
 
         val target = VolEtat.DECOLLE
@@ -230,7 +261,7 @@ class VolServiceTest {
 
         val v1 = Vol(
             UUID.randomUUID(), "AF7000", "CDG", "MAD",
-            now.plusHours(2), now.plusHours(4), VolEtat.EN_VOL, null
+            now.plusHours(2), now.plusHours(4), VolEtat.EN_VOL, null, null
         )
 
         every { volPort.findByEtat(VolEtat.EN_VOL) } returns Flux.just(v1)

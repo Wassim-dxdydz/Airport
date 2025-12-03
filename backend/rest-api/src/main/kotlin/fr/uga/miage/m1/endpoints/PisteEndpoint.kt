@@ -3,6 +3,7 @@ package fr.uga.miage.m1.endpoints
 import fr.uga.miage.m1.requests.CreatePisteRequest
 import fr.uga.miage.m1.requests.UpdatePisteEtatRequest
 import fr.uga.miage.m1.responses.PisteResponse
+import fr.uga.miage.m1.responses.VolResponse
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
@@ -27,9 +28,12 @@ interface PisteEndpoint {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun delete(@PathVariable id: UUID): Mono<Void>
+    fun delete(@PathVariable id: UUID): Mono<Unit>
 
     @GetMapping("/disponibles")
     fun disponibles(): Flux<PisteResponse> // etat = LIBRE
+
+    @GetMapping("/{id}/planning")
+    fun planning(@PathVariable id: UUID): Flux<VolResponse>
 
 }

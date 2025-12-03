@@ -28,7 +28,7 @@ interface HangarEndpoint {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun delete(@PathVariable id: UUID): Mono<Void>
+    fun delete(@PathVariable id: UUID): Mono<Unit>
 
     // Lister les avions présents dans un hangar
     @GetMapping("/{id}/avions")

@@ -49,7 +49,8 @@ class VolControllerTest(
             heureDepart = now,
             heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         every { volService.list() } returns Flux.just(v)
@@ -102,7 +103,8 @@ class VolControllerTest(
             heureDepart = now,
             heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
-            avionId = avionId
+            avionId = avionId,
+            pisteId = null
         )
 
         every { volService.assignAvion(id, avionId) } returns Mono.just(updated)
@@ -127,7 +129,8 @@ class VolControllerTest(
             heureDepart = now,
             heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         every { volService.get(id) } returns Mono.just(v)
@@ -156,7 +159,8 @@ class VolControllerTest(
             heureDepart = now,
             heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         val req = UpdateVolRequest(destination = "JFK")
@@ -205,7 +209,8 @@ class VolControllerTest(
             heureDepart = now,
             heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         every { volService.unassignAvion(id) } returns Mono.just(updated)
@@ -230,7 +235,8 @@ class VolControllerTest(
             heureDepart = now,
             heureArrivee = now.plusHours(2),
             etat = VolEtat.DECOLLE,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         every { volService.updateEtat(id, VolEtat.DECOLLE) } returns Mono.just(updated)
@@ -260,7 +266,8 @@ class VolControllerTest(
             heureDepart = now,
             heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         every { volService.listByEtat(VolEtat.PREVU) } returns Flux.just(v)

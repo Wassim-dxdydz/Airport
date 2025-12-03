@@ -14,11 +14,11 @@ interface VolDataPort {
 
     fun save(vol: Vol): Mono<Vol>
 
-    fun deleteById(id: UUID): Mono<Void>
+    fun deleteById(id: UUID): Mono<Unit>
 
     fun findByNumeroVol(numeroVol: String): Mono<Vol>
 
-    fun deleteByNumeroVol(numeroVol: String): Mono<Void>
+    fun deleteByNumeroVol(numeroVol: String): Mono<Unit>
 
     fun findByEtat(etat: VolEtat): Flux<Vol>
 
@@ -29,4 +29,7 @@ interface VolDataPort {
     fun findByDestination(destination: String): Flux<Vol>
 
     fun findByOrigineAndDestination(origine: String, destination: String): Flux<Vol>
+
+    fun findByPisteId(pisteId: UUID): Flux<Vol>
+
 }

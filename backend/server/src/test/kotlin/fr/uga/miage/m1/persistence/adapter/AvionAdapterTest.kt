@@ -98,6 +98,7 @@ class AvionAdapterTest {
         every { repo.deleteById(id) } returns Mono.empty()
 
         StepVerifier.create(adapter.deleteById(id))
+            .expectNext(Unit)
             .verifyComplete()
 
         verify { repo.deleteById(id) }
@@ -122,5 +123,26 @@ class AvionAdapterTest {
 
         verify { repo.findByEtat(AvionEtat.EN_SERVICE) }
     }
+
+    @Test
+    fun `findByImmatriculation returns mapped domain`() {
+        val entity = AvionEntity(
+            id = UUID.randomUUID(),
+            immatriculation = "F-TEST",
+            type = "A320",
+            capacite = 180,
+            etat = AvionEtat.EN_SERVICE,
+            hangarId = null
+        )
+
+        every { repo.findByImmatriculation("F-TEST") } returns Mono.just(entity)
+
+        StepVerifier.create(adapter.findByImmatriculation("F-TEST"))
+            .expectNextMatches { it.immatriculation == "F-TEST" && it.type == "A320" }
+            .verifyComplete()
+
+        verify { repo.findByImmatriculation("F-TEST") }
+    }
+
 
 }

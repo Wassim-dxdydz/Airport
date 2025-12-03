@@ -66,6 +66,7 @@ class PisteAdapterTest {
         every { repo.deleteById(id) } returns Mono.empty()
 
         StepVerifier.create(adapter.deleteById(id))
+            .expectNext(Unit)
             .verifyComplete()
 
         verify { repo.deleteById(id) }

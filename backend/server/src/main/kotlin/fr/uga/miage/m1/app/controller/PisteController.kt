@@ -1,7 +1,10 @@
 package fr.uga.miage.m1.app.controller
 
 import fr.uga.miage.m1.app.mapper.PisteMapper
+import fr.uga.miage.m1.app.mapper.VolMapper
+import fr.uga.miage.m1.responses.VolResponse
 import fr.uga.miage.m1.domain.service.PisteService
+import fr.uga.miage.m1.domain.service.VolService
 import fr.uga.miage.m1.requests.CreatePisteRequest
 import fr.uga.miage.m1.requests.UpdatePisteEtatRequest
 import fr.uga.miage.m1.responses.PisteResponse
@@ -13,7 +16,8 @@ import java.util.UUID
 
 @RestController
 class PisteController(
-    private val pisteService: PisteService
+    private val pisteService: PisteService,
+    private val volService: VolService
 ) : PisteEndpoint {
 
     override fun list(): Flux<PisteResponse> =
@@ -32,10 +36,14 @@ class PisteController(
         pisteService.updateEtat(id, req.etat)
             .map(PisteMapper::toResponse)
 
-    override fun delete(id: UUID): Mono<Void> =
-        pisteService.delete(id)
+    override fun delete(id: UUID): Mono<Unit> =
+        pisteService.delete(id).thenReturn(Unit)
 
     override fun disponibles(): Flux<PisteResponse> =
         pisteService.disponibles()
             .map(PisteMapper::toResponse)
+
+    override fun planning(id: UUID): Flux<VolResponse> =
+        volService.listByPiste(id)
+            .map(VolMapper::toResponse)
 }

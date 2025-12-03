@@ -7,5 +7,5 @@ import java.util.UUID
 
 interface HangarRepository : ReactiveCrudRepository<HangarEntity, UUID> {
     fun findByIdentifiant(identifiant: String): Mono<HangarEntity>
-    fun deleteByIdentifiant(identifiant: String): Mono<Void>
+    fun deleteByIdentifiant(identifiant: String): Mono<Unit>
 }

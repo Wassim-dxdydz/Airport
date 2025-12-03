@@ -6,12 +6,12 @@
 
     <parent>
         <groupId>fr.uga.miage.m1</groupId>
-        <artifactId>PC-PROJECT</artifactId>
+        <artifactId>pc-strawhats</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>server</artifactId>
-    <name>PC-PROJECT - server</name>
+    <name>pc-strawhats - server</name>
 
     <properties>
         <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
@@ -149,6 +149,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+            <version>${springdoc.version}</version>
         </dependency>
     </dependencies>
 

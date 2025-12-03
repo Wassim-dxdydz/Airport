@@ -32,6 +32,9 @@ data class VolEntity(
     @Column("avion_id")
     val avionId: UUID? = null,
 
+    @Column("piste_id")
+    val pisteId: UUID? = null,
+
     @InsertOnlyProperty
     @CreatedDate
     @Column("created_at")

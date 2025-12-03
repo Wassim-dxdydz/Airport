@@ -58,7 +58,8 @@ class VolAdapterTest {
             heureDepart = now,
             heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         val entity = VolEntity(
@@ -96,7 +97,7 @@ class VolAdapterTest {
         val entity = VolEntity(
             id, "AF1000", "CDG", "MAD",
             now, now.plusHours(2),
-            VolEtat.PREVU, null, now, now
+            VolEtat.PREVU, null, null, now, now
         )
 
         every { repo.findById(id) } returns Mono.just(entity)
@@ -114,6 +115,7 @@ class VolAdapterTest {
         every { repo.deleteById(id) } returns Mono.empty()
 
         StepVerifier.create(adapter.deleteById(id))
+            .expectNext(Unit)
             .verifyComplete()
 
         verify { repo.deleteById(id) }
@@ -125,7 +127,7 @@ class VolAdapterTest {
         val entity = VolEntity(
             UUID.randomUUID(), "AF1000", "CDG", "MAD",
             now, now.plusHours(2),
-            VolEtat.PREVU, null, now, now
+            VolEtat.PREVU, null, null, now, now
         )
 
         every { repo.findByNumeroVol("AF1000") } returns Mono.just(entity)
@@ -142,6 +144,7 @@ class VolAdapterTest {
         every { repo.deleteByNumeroVol("AF1000") } returns Mono.empty()
 
         StepVerifier.create(adapter.deleteByNumeroVol("AF1000"))
+            .expectNext(Unit)
             .verifyComplete()
 
         verify { repo.deleteByNumeroVol("AF1000") }
@@ -153,7 +156,7 @@ class VolAdapterTest {
         val entity = VolEntity(
             UUID.randomUUID(), "AF1000", "CDG", "MAD",
             now, now.plusHours(2),
-            VolEtat.PREVU, null, now, now
+            VolEtat.PREVU, null, null ,now, now
         )
 
         every { repo.findByEtat(VolEtat.PREVU) } returns Flux.just(entity)
@@ -172,7 +175,7 @@ class VolAdapterTest {
         val entity = VolEntity(
             UUID.randomUUID(), "AF2000", "LYS", "NCE",
             now, now.plusHours(1),
-            VolEtat.PREVU, avionId, now, now
+            VolEtat.PREVU, avionId, null, now, now
         )
 
         every { repo.findByAvionId(avionId) } returns Flux.just(entity)
@@ -190,7 +193,7 @@ class VolAdapterTest {
         val entity = VolEntity(
             UUID.randomUUID(), "AF3000", "LYS", "MAD",
             now, now.plusHours(2),
-            VolEtat.PREVU, null, now, now
+            VolEtat.PREVU, null, null, now, now
         )
 
         every { repo.findByOrigine("LYS") } returns Flux.just(entity)
@@ -208,7 +211,7 @@ class VolAdapterTest {
         val entity = VolEntity(
             UUID.randomUUID(), "AF4000", "CDG", "NYC",
             now, now.plusHours(8),
-            VolEtat.PREVU, null, now, now
+            VolEtat.PREVU, null, null, now, now
         )
 
         every { repo.findByDestination("NYC") } returns Flux.just(entity)
@@ -226,7 +229,7 @@ class VolAdapterTest {
         val entity = VolEntity(
             UUID.randomUUID(), "AF5000", "CDG", "LAX",
             now, now.plusHours(11),
-            VolEtat.PREVU, null, now, now
+            VolEtat.PREVU, null, null, now, now
         )
 
         every { repo.findByOrigineAndDestination("CDG", "LAX") } returns Flux.just(entity)

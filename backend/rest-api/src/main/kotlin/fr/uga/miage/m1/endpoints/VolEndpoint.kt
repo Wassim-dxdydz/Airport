@@ -28,7 +28,7 @@ interface VolEndpoint {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun delete(@PathVariable id: UUID): Mono<Void>
+    fun delete(@PathVariable id: UUID): Mono<Unit>
 
     // Association Avion ↔ Vol
     @PostMapping("/{id}/assign-avion/{avionId}")
@@ -43,4 +43,20 @@ interface VolEndpoint {
 
     @GetMapping("/etat/{etat}")
     fun listByEtat(@PathVariable etat: VolEtat): Flux<VolResponse>
+
+    @PostMapping("/{id}/assign-piste/{pisteId}")
+    fun assignPiste(@PathVariable id: UUID, @PathVariable pisteId: UUID): Mono<VolResponse>
+
+    @PostMapping("/{id}/release-piste")
+    fun releasePiste(@PathVariable id: UUID): Mono<VolResponse>
+
+    @GetMapping("/departures")
+    fun listDepartures(): Flux<VolResponse>
+
+    @GetMapping("/arrivals")
+    fun listArrivals(): Flux<VolResponse>
+
+    @GetMapping("/traffic")
+    fun traffic(): Flux<VolResponse>
+
 }

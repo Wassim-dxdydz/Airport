@@ -16,8 +16,12 @@ interface AvionDataPort {
 
     fun save(avion: Avion): Mono<Avion>
 
-    fun deleteById(id: UUID): Mono<Void>
+    fun deleteById(id: UUID): Mono<Unit>
 
     fun existsByImmatriculation(immatriculation: String): Mono<Boolean>
+
+
+    fun findByImmatriculation(immatriculation: String): Mono<Avion>
+
 }
 

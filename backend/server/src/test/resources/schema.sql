@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS vol (
     heure_arrivee TIMESTAMP NOT NULL,
     etat VARCHAR(50) NOT NULL,
     avion_id UUID,
+    piste_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP
     );

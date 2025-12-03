@@ -12,5 +12,6 @@ data class Vol(
     val heureDepart: LocalDateTime,
     val heureArrivee: LocalDateTime,
     val etat: VolEtat,
-    val avionId: UUID?
+    val avionId: UUID?,
+    val pisteId: UUID?
 )

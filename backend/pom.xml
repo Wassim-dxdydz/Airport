@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>fr.uga.miage.m1</groupId>
-    <artifactId>PC-PROJECT</artifactId>
+    <artifactId>pc-strawhats</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>PC-PROJECT</name>
+    <name>pc-strawhats</name>
     <packaging>pom</packaging>
 
     <modules>
@@ -38,6 +38,7 @@
         <failsafe.version>3.5.4</failsafe.version>
         <jacoco.version>0.8.12</jacoco.version>
         <flyway-maven.version>9.22.2</flyway-maven.version>
+        <springdoc.version>2.7.0</springdoc.version>
     </properties>
 
     <build>

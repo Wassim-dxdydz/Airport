@@ -27,14 +27,16 @@ class AvionAdapter(
     override fun save(avion: Avion): Mono<Avion> =
         repo.save(avion.toEntity()).map { it.toDomain() }
 
-    override fun deleteById(id: UUID): Mono<Void> =
-        repo.deleteById(id)
+    override fun deleteById(id: UUID): Mono<Unit> =
+        repo.deleteById(id).thenReturn(Unit)
 
     override fun existsByImmatriculation(immatriculation: String): Mono<Boolean> =
         repo.existsByImmatriculation(immatriculation)
-}
 
-/* MAPPERS */
+    override fun findByImmatriculation(immatriculation: String): Mono<Avion> =
+        repo.findByImmatriculation(immatriculation).map { it.toDomain() }
+
+}
 fun AvionEntity.toDomain() = Avion(
     id = id,
     immatriculation = immatriculation,

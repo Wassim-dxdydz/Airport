@@ -30,8 +30,8 @@ class AvionController(
             .flatMap { avionService.update(id, AvionMapper.toUpdatedDomain(it, req)) }
             .map(AvionMapper::toResponse)
 
-    override fun delete(id: UUID): Mono<Void> =
-        avionService.delete(id)
+    override fun delete(id: UUID): Mono<Unit> =
+        avionService.delete(id).thenReturn(Unit)
 
     override fun assignHangar(id: UUID, hangarId: UUID): Mono<AvionResponse> =
         avionService.assignHangar(id, hangarId).map(AvionMapper::toResponse)

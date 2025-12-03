@@ -1,4 +1,4 @@
-package fr.uga.miage.m1.server.configurations
+package fr.uga.miage.m1.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

@@ -3,14 +3,14 @@ spring:
     name: PC-PROJECT
 
   r2dbc:
-    url: r2dbc:postgresql://localhost:5432/${POSTGRES_DB:airport}
+    url: r2dbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${POSTGRES_DB:airport}
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:0205116969}
 
   flyway:
     enabled: true
     locations: classpath:db/migration
-    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:airport}
+    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${POSTGRES_DB:airport}
     user: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:0205116969}
 
@@ -18,3 +18,19 @@ server:
   port: 8080
   ssl:
     enabled: false
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+
+remote:
+  airport:
+    base-url: ${REMOTE_URL:http://localhost:8081}
+    code : CDG
+
+local:
+  airport:
+    code: ATL
+    name: Hartsfield-Jackson Atlanta International Airport

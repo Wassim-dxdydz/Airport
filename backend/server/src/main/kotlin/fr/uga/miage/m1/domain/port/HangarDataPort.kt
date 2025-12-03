@@ -15,9 +15,9 @@ interface HangarDataPort {
 
     fun save(hangar: Hangar): Mono<Hangar>
 
-    fun deleteById(id: UUID): Mono<Void>
+    fun deleteById(id: UUID): Mono<Unit>
 
-    fun deleteByIdentifiant(identifiant: String): Mono<Void>
+    fun deleteByIdentifiant(identifiant: String): Mono<Unit>
 
     fun existsById(id: UUID): Mono<Boolean>
 }

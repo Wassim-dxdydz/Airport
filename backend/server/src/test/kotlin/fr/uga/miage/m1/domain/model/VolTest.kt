@@ -24,7 +24,8 @@ class VolTest {
             heureDepart = now,
             heureArrivee = later,
             etat = VolEtat.PREVU,
-            avionId = avionId
+            avionId = avionId,
+            pisteId = null
         )
 
         assertEquals(id, vol.id)
@@ -50,7 +51,8 @@ class VolTest {
             heureDepart = now,
             heureArrivee = later,
             etat = VolEtat.EN_ATTENTE,
-            avionId = null
+            avionId = null,
+            pisteId = null
         )
 
         assertNull(vol.id)

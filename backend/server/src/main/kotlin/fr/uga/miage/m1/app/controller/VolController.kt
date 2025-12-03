@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
+import org.springframework.beans.factory.annotation.Value
 
 @RestController
 class VolController(
-    private val volService: VolService
+    private val volService: VolService,
+    @Value("\${local.airport.code}") private val airportCode: String
 ) : VolEndpoint {
 
     override fun list(): Flux<VolResponse> =
@@ -35,8 +37,8 @@ class VolController(
             }
             .map(VolMapper::toResponse)
 
-    override fun delete(id: UUID): Mono<Void> =
-        volService.delete(id)
+    override fun delete(id: UUID): Mono<Unit> =
+        volService.delete(id).thenReturn(Unit)
 
     override fun assignAvion(id: UUID, avionId: UUID): Mono<VolResponse> =
         volService.assignAvion(id, avionId)
@@ -53,4 +55,25 @@ class VolController(
     override fun listByEtat(etat: VolEtat): Flux<VolResponse> =
         volService.listByEtat(etat)
             .map(VolMapper::toResponse)
+
+    override fun assignPiste(id: UUID, pisteId: UUID): Mono<VolResponse> =
+        volService.assignPiste(id, pisteId)
+            .map(VolMapper::toResponse)
+
+    override fun releasePiste(id: UUID): Mono<VolResponse> =
+        volService.releasePiste(id)
+            .map(VolMapper::toResponse)
+
+    override fun listDepartures(): Flux<VolResponse> =
+        volService.listDeparturesFrom(airportCode)
+            .map(VolMapper::toResponse)
+
+    override fun listArrivals(): Flux<VolResponse> =
+        volService.listArrivalsTo(airportCode)
+            .map(VolMapper::toResponse)
+
+    override fun traffic(): Flux<VolResponse> =
+        volService.trafficFor(airportCode)
+            .map(VolMapper::toResponse)
+
 }

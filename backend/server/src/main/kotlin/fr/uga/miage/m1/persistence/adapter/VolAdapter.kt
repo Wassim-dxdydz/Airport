@@ -24,14 +24,14 @@ class VolAdapter(
     override fun save(vol: Vol): Mono<Vol> =
         repo.save(vol.toEntity()).map { it.toDomain() }
 
-    override fun deleteById(id: UUID): Mono<Void> =
-        repo.deleteById(id)
+    override fun deleteById(id: UUID): Mono<Unit> =
+        repo.deleteById(id).thenReturn(Unit)
 
     override fun findByNumeroVol(numeroVol: String): Mono<Vol> =
         repo.findByNumeroVol(numeroVol).map { it.toDomain() }
 
-    override fun deleteByNumeroVol(numeroVol: String): Mono<Void> =
-        repo.deleteByNumeroVol(numeroVol)
+    override fun deleteByNumeroVol(numeroVol: String): Mono<Unit> =
+        repo.deleteByNumeroVol(numeroVol).thenReturn(Unit)
 
     override fun findByEtat(etat: VolEtat): Flux<Vol> =
         repo.findByEtat(etat).map { it.toDomain() }
@@ -47,6 +47,10 @@ class VolAdapter(
 
     override fun findByOrigineAndDestination(origine: String, destination: String): Flux<Vol> =
         repo.findByOrigineAndDestination(origine, destination).map { it.toDomain() }
+
+    override fun findByPisteId(pisteId: UUID): Flux<Vol> =
+        repo.findByPisteId(pisteId).map(VolEntity::toDomain)
+
 }
 
 /* Mapping */
@@ -59,7 +63,8 @@ fun VolEntity.toDomain() = Vol(
     heureDepart = heureDepart,
     heureArrivee = heureArrivee,
     etat = etat,
-    avionId = avionId
+    avionId = avionId,
+    pisteId = pisteId
 )
 
 fun Vol.toEntity() = VolEntity(
@@ -70,5 +75,6 @@ fun Vol.toEntity() = VolEntity(
     heureDepart = heureDepart,
     heureArrivee = heureArrivee,
     etat = etat,
-    avionId = avionId
+    avionId = avionId,
+    pisteId = pisteId
 )

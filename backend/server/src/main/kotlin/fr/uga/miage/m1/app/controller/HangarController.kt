@@ -37,8 +37,8 @@ class HangarController(
             }
             .map(HangarMapper::toResponse)
 
-    override fun delete(id: UUID): Mono<Void> =
-        hangarService.delete(id)
+    override fun delete(id: UUID): Mono<Unit> =
+        hangarService.delete(id).thenReturn(Unit)
 
     override fun listAvions(id: UUID): Flux<AvionResponse> =
         hangarService.listAvions(id)

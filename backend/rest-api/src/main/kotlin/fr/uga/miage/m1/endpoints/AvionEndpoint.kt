@@ -27,7 +27,7 @@ interface AvionEndpoint {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun delete(@PathVariable id: UUID): Mono<Void>
+    fun delete(@PathVariable id: UUID): Mono<Unit>
 
     // Association Hangar ↔ Avion
     @PostMapping("/{id}/assign-hangar/{hangarId}")
