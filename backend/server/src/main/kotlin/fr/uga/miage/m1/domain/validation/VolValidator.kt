@@ -11,7 +11,7 @@ object VolValidator {
         validateAirports(vol)
         validateDates(vol)
     }
-
+    // Valide les codes aéroportuaires et la différence entre origine et destination
     private fun validateAirports(vol: Vol) {
         //On doit tout d'abord vérifier que les codes aéroportuaires sont valides (format IATA)
         if (!airportCodeRegex.matches(vol.origine))
@@ -23,7 +23,7 @@ object VolValidator {
         if (vol.origine == vol.destination)
             throw IllegalArgumentException("Origine et destination doivent être différentes.")
     }
-
+    // Valide que la date/heure de départ est avant celle d'arrivée
     private fun validateDates(vol: Vol) {
         //On doit vérifier que la date/heure de départ est avant celle d'arrivée, car c'est impossible d'arriver avant de partir :)
         if (vol.heureDepart.isAfter(vol.heureArrivee))

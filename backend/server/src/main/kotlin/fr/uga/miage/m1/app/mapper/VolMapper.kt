@@ -21,17 +21,12 @@ object VolMapper {
             pisteId = null,
         )
 
-    fun toUpdatedDomain(current: Vol, req: UpdateVolRequest): Vol =
-        Vol(
-            id = current.id,
-            numeroVol = current.numeroVol, // immutable
+    fun toPatchedDomain(current: Vol, req: UpdateVolRequest): Vol =
+        current.copy(
             origine = req.origine ?: current.origine,
             destination = req.destination ?: current.destination,
             heureDepart = req.heureDepart ?: current.heureDepart,
-            heureArrivee = req.heureArrivee ?: current.heureArrivee,
-            etat = req.etat ?: current.etat,
-            avionId = req.avionId ?: current.avionId,
-            pisteId = current.pisteId,
+            heureArrivee = req.heureArrivee ?: current.heureArrivee
         )
 
     fun toResponse(vol: Vol): VolResponse =

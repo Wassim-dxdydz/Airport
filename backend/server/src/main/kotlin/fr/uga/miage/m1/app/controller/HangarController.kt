@@ -30,10 +30,11 @@ class HangarController(
         hangarService.create(HangarMapper.toDomain(req))
             .map(HangarMapper::toResponse)
 
-    override fun update(id: UUID, req: UpdateHangarRequest): Mono<HangarResponse> =
+    override fun patch(id: UUID, req: UpdateHangarRequest): Mono<HangarResponse> =
         hangarService.get(id)
             .flatMap { current ->
-                hangarService.update(id, HangarMapper.toUpdatedDomain(current, req))
+                val updated = HangarMapper.toUpdatedDomain(current, req)
+                hangarService.update(id, updated)
             }
             .map(HangarMapper::toResponse)
 

@@ -38,7 +38,7 @@ class RemoteAirportClientTest {
     }
 
     @Test
-    fun `importVol does POST to shared import endpoint`() {
+    fun `sendVolToPartner does POST to import endpoint`() {
         val req = mockk<SharedVolRequest>()
 
         every { webClient.post() } returns requestBodyUriSpec
@@ -47,7 +47,7 @@ class RemoteAirportClientTest {
         every { requestBodyUriSpec.retrieve() } returns responseSpec
         every { responseSpec.bodyToMono(Void::class.java) } returns Mono.empty()
 
-        StepVerifier.create(client.importVol(req))
+        StepVerifier.create(client.sendVolToPartner(req))
             .verifyComplete()
 
         verifyOrder {
@@ -60,14 +60,15 @@ class RemoteAirportClientTest {
     }
 
     @Test
-    fun `fetchRemoteVols does GET to shared export endpoint`() {
+    fun `fetchPartnerFlights does GET to partner endpoint`() {
         val now = LocalDateTime.now()
-        val sharedResponse = SharedVolResponse(
+
+        val response = SharedVolResponse(
             numeroVol = "AF100",
             origine = "CDG",
-            destination = "ATL",
+            destination = "ALG",
             heureDepart = now,
-            heureArrivee = now.plusHours(8),
+            heureArrivee = now.plusHours(2),
             etat = VolEtat.PREVU,
             avionImmatriculation = "F-TEST",
             avionType = "A320",
@@ -75,18 +76,20 @@ class RemoteAirportClientTest {
             avionEtat = AvionEtat.EN_SERVICE
         )
 
-        every { webClient.get() } returns requestHeadersUriSpec
-        every { requestHeadersUriSpec.uri("/api/shared/vols/export") } returns requestHeadersUriSpec
-        every { requestHeadersUriSpec.retrieve() } returns responseSpec
-        every { responseSpec.bodyToFlux(SharedVolResponse::class.java) } returns Flux.just(sharedResponse)
+        val airportCode = "ALG"
 
-        StepVerifier.create(client.fetchRemoteVols())
-            .expectNext(sharedResponse)
+        every { webClient.get() } returns requestHeadersUriSpec
+        every { requestHeadersUriSpec.uri("/api/volExterieurs/{code}", airportCode) } returns requestHeadersUriSpec
+        every { requestHeadersUriSpec.retrieve() } returns responseSpec
+        every { responseSpec.bodyToFlux(SharedVolResponse::class.java) } returns Flux.just(response)
+
+        StepVerifier.create(client.fetchPartnerFlights(airportCode))
+            .expectNext(response)
             .verifyComplete()
 
         verifyOrder {
             webClient.get()
-            requestHeadersUriSpec.uri("/api/shared/vols/export")
+            requestHeadersUriSpec.uri("/api/volExterieurs/{code}", airportCode)
             requestHeadersUriSpec.retrieve()
             responseSpec.bodyToFlux(SharedVolResponse::class.java)
         }

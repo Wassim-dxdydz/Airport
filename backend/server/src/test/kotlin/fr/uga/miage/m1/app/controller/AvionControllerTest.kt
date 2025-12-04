@@ -95,7 +95,7 @@ class AvionControllerTest(
     }
 
     @Test
-    fun `PUT update avion`() {
+    fun `PATCH update avion`() {
         val id = UUID.randomUUID()
 
         val existing = Avion(
@@ -114,7 +114,7 @@ class AvionControllerTest(
         every { avionService.get(id) } returns Mono.just(existing)
         every { avionService.update(id, any()) } returns Mono.just(updated)
 
-        client.put().uri("$baseUrl/$id")
+        client.patch().uri("$baseUrl/$id")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(req)
             .exchange()

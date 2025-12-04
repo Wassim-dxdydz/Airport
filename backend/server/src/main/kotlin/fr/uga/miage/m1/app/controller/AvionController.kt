@@ -25,7 +25,7 @@ class AvionController(
     override fun create(req: CreateAvionRequest): Mono<AvionResponse> =
         avionService.create(AvionMapper.toDomain(req)).map(AvionMapper::toResponse)
 
-    override fun update(id: UUID, req: UpdateAvionRequest): Mono<AvionResponse> =
+    override fun patch(id: UUID, req: UpdateAvionRequest): Mono<AvionResponse> =
         avionService.get(id)
             .flatMap { avionService.update(id, AvionMapper.toUpdatedDomain(it, req)) }
             .map(AvionMapper::toResponse)

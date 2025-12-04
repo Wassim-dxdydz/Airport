@@ -1,8 +1,10 @@
 package fr.uga.miage.m1.domain.service
 
+import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.PisteEtat
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.VolEtat
 import fr.uga.miage.m1.domain.model.Vol
 import fr.uga.miage.m1.domain.model.VolHistory
+import fr.uga.miage.m1.domain.model.Piste
 import fr.uga.miage.m1.domain.port.AvionDataPort
 import fr.uga.miage.m1.domain.port.PisteDataPort
 import fr.uga.miage.m1.domain.port.VolDataPort
@@ -37,32 +39,18 @@ class VolServiceTest {
         volHistoryPort = mockk()
         syncService = mockk()
 
-        // THE IMPORTANT FIX
         every { volHistoryPort.save(any()) } returns Mono.just(
-            VolHistory(
-                id = UUID.randomUUID(),
-                volId = UUID.randomUUID(),
-                etat = VolEtat.PREVU
-            )
+            VolHistory(id = UUID.randomUUID(), volId = UUID.randomUUID(), etat = VolEtat.PREVU)
         )
 
-        service = VolService(
-            volPort,
-            avionPort,
-            syncService,
-            volHistoryPort,
-            strategy,
-            pistePort
-        )
+        service = VolService(volPort, avionPort, syncService, volHistoryPort, strategy, pistePort)
     }
 
     @Test
     fun `list returns vols`() {
-        val v = Vol(
-            UUID.randomUUID(), "AF1000", "CDG", "MAD",
+        val v = Vol(UUID.randomUUID(), "AF1000", "CDG", "MAD",
             LocalDateTime.now(), LocalDateTime.now().plusHours(2),
-            VolEtat.PREVU, null, null
-        )
+            VolEtat.PREVU, null, null)
 
         every { volPort.findAll() } returns Flux.just(v)
 
@@ -88,7 +76,6 @@ class VolServiceTest {
     @Test
     fun `get throws NotFoundException when missing`() {
         val id = UUID.randomUUID()
-
         every { volPort.findById(id) } returns Mono.empty()
 
         StepVerifier.create(service.get(id))
@@ -98,19 +85,10 @@ class VolServiceTest {
 
     @Test
     fun `create sets etat PREVU, saves and pushes to partner`() {
-
         val now = LocalDateTime.now()
-        val vol = Vol(
-            id = null,
-            numeroVol = "AF2000",
-            origine = "CDG",
-            destination = "LHR",
-            heureDepart = now.plusHours(1),
-            heureArrivee = now.plusHours(2),
-            etat = VolEtat.PREVU,
-            avionId = null,
-            pisteId = null
-        )
+        val vol = Vol(null, "AF2000", "CDG", "LHR",
+            now.plusHours(1), now.plusHours(2),
+            VolEtat.PREVU, null, null)
 
         val saved = vol.copy(id = UUID.randomUUID())
 
@@ -121,22 +99,19 @@ class VolServiceTest {
             .expectNext(saved)
             .verifyComplete()
 
-        verify { volPort.save(match { it.numeroVol == "AF2000" }) }
+        verify { volPort.save(any()) }
         verify { syncService.pushToPartner(saved) }
         verify { volHistoryPort.save(any()) }
     }
 
     @Test
     fun `update merges fields, saves and pushes to partner`() {
-
         val id = UUID.randomUUID()
         val now = LocalDateTime.now()
 
-        val existing = Vol(
-            id, "AF3000", "LYS", "CDG",
+        val existing = Vol(id, "AF3000", "LYS", "CDG",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.PREVU, null, null
-        )
+            VolEtat.PREVU, null, null)
 
         val updated = existing.copy(origine = "MRS")
 
@@ -153,6 +128,24 @@ class VolServiceTest {
         verify { volHistoryPort.save(any()) }
     }
 
+    @Test
+    fun `updateBasicFields updates selected fields`() {
+        val id = UUID.randomUUID()
+        val now = LocalDateTime.now()
+
+        val existing = Vol(id, "AF3010", "CDG", "LHR",
+            now, now.plusHours(2), VolEtat.PREVU, null, null)
+
+        val patched = existing.copy(origine = "ALX")
+
+        every { volPort.findById(id) } returns Mono.just(existing)
+        every { volPort.save(any()) } returns Mono.just(patched)
+        every { syncService.pushToPartner(patched) } returns Mono.empty()
+
+        StepVerifier.create(service.updateBasicFields(id, patched))
+            .expectNext(patched)
+            .verifyComplete()
+    }
 
     @Test
     fun `assignAvion fails if avion not found`() {
@@ -172,11 +165,8 @@ class VolServiceTest {
         val avionId = UUID.randomUUID()
         val now = LocalDateTime.now()
 
-        val current = Vol(
-            volId, "AF4000", "CDG", "MAD",
-            now.plusHours(1), now.plusHours(3),
-            VolEtat.PREVU, null, null
-        )
+        val current = Vol(volId, "AF4000", "CDG", "MAD",
+            now.plusHours(1), now.plusHours(3), VolEtat.PREVU, null, null)
 
         val updated = current.copy(avionId = avionId)
 
@@ -194,11 +184,8 @@ class VolServiceTest {
         val id = UUID.randomUUID()
         val now = LocalDateTime.now()
 
-        val current = Vol(
-            id, "AF5000", "MAD", "CDG",
-            now.plusHours(1), now.plusHours(3),
-            VolEtat.PREVU, UUID.randomUUID(), UUID.randomUUID()
-        )
+        val current = Vol(id, "AF5000", "MAD", "CDG",
+            now.plusHours(1), now.plusHours(3), VolEtat.PREVU, UUID.randomUUID(), UUID.randomUUID())
 
         val updated = current.copy(avionId = null)
 
@@ -214,11 +201,9 @@ class VolServiceTest {
     fun `updateEtat saves when transition allowed`() {
         val id = UUID.randomUUID()
         val now = LocalDateTime.now()
-        val current = Vol(
-            id, "AF6000", "CDG", "LIS",
+        val current = Vol(id, "AF6000", "CDG", "LIS",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.EN_ATTENTE, null, null
-        )
+            VolEtat.EN_ATTENTE, null, null)
 
         val target = VolEtat.EMBARQUEMENT
         val updated = current.copy(etat = target)
@@ -237,11 +222,9 @@ class VolServiceTest {
         val id = UUID.randomUUID()
         val now = LocalDateTime.now()
 
-        val current = Vol(
-            id, "AF6001", "LIS", "CDG",
+        val current = Vol(id, "AF6001", "LIS", "CDG",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.ARRIVE, null, null
-        )
+            VolEtat.ARRIVE, null, null)
 
         val target = VolEtat.DECOLLE
 
@@ -256,11 +239,93 @@ class VolServiceTest {
     }
 
     @Test
+    fun `assignPiste succeeds when piste available`() {
+        val volId = UUID.randomUUID()
+        val pisteId = UUID.randomUUID()
+
+        val vol = Vol(volId, "AF7000", "CDG", "ALG",
+            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
+            VolEtat.PREVU, null, null)
+
+        val piste = Piste(pisteId, "P1", 3200, PisteEtat.LIBRE)
+
+        val updatedVol = vol.copy(pisteId = pisteId)
+        val updatedPiste = piste.copy(etat = PisteEtat.OCCUPEE)
+
+        every { volPort.findById(volId) } returns Mono.just(vol)
+        every { pistePort.findById(pisteId) } returns Mono.just(piste)
+        every { pistePort.save(updatedPiste) } returns Mono.just(updatedPiste)
+        every { volPort.save(updatedVol) } returns Mono.just(updatedVol)
+
+        StepVerifier.create(service.assignPiste(volId, pisteId))
+            .expectNext(updatedVol)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `assignPiste fails when piste not free`() {
+        val volId = UUID.randomUUID()
+        val pisteId = UUID.randomUUID()
+
+        val vol = Vol(volId, "AF7001", "CDG", "ALG",
+            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
+            VolEtat.PREVU, null, null)
+
+        val piste = Piste(pisteId, "P1", 3200, PisteEtat.OCCUPEE)
+
+        every { volPort.findById(volId) } returns Mono.just(vol)
+        every { pistePort.findById(pisteId) } returns Mono.just(piste)
+
+        StepVerifier.create(service.assignPiste(volId, pisteId))
+            .expectError(IllegalStateException::class.java)
+            .verify()
+    }
+
+    @Test
+    fun `releasePiste succeeds`() {
+        val volId = UUID.randomUUID()
+        val pisteId = UUID.randomUUID()
+
+        val vol = Vol(volId, "AF8000", "CDG", "ALG",
+            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
+            VolEtat.PREVU, null, pisteId)
+
+        val piste = Piste(pisteId, "P2", 3000, PisteEtat.OCCUPEE)
+
+        val updatedPiste = piste.copy(etat = PisteEtat.LIBRE)
+        val updatedVol = vol.copy(pisteId = null)
+
+        every { volPort.findById(volId) } returns Mono.just(vol)
+        every { pistePort.findById(pisteId) } returns Mono.just(piste)
+        every { pistePort.save(updatedPiste) } returns Mono.just(updatedPiste)
+        every { volPort.save(updatedVol) } returns Mono.just(updatedVol)
+
+        StepVerifier.create(service.releasePiste(volId))
+            .expectNext(updatedVol)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `releasePiste fails when no piste is assigned`() {
+        val volId = UUID.randomUUID()
+
+        val vol = Vol(volId, "AF8001", "CDG", "ALG",
+            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
+            VolEtat.PREVU, null, null)
+
+        every { volPort.findById(volId) } returns Mono.just(vol)
+
+        StepVerifier.create(service.releasePiste(volId))
+            .expectError(IllegalStateException::class.java)
+            .verify()
+    }
+
+    @Test
     fun `listByEtat delegates to port`() {
         val now = LocalDateTime.now()
 
         val v1 = Vol(
-            UUID.randomUUID(), "AF7000", "CDG", "MAD",
+            UUID.randomUUID(), "AF9000", "CDG", "MAD",
             now.plusHours(2), now.plusHours(4), VolEtat.EN_VOL, null, null
         )
 
@@ -271,5 +336,53 @@ class VolServiceTest {
             .verifyComplete()
 
         verify { volPort.findByEtat(VolEtat.EN_VOL) }
+    }
+
+    @Test
+    fun `listDeparturesFrom delegates`() {
+        val airport = "ALG"
+        val v = Vol(UUID.randomUUID(), "AF9001", airport, "PAR",
+            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
+            VolEtat.PREVU, null, null)
+
+        every { volPort.findByOrigine(airport) } returns Flux.just(v)
+
+        StepVerifier.create(service.listDeparturesFrom(airport))
+            .expectNext(v)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `listArrivalsTo delegates`() {
+        val airport = "LYS"
+        val v = Vol(UUID.randomUUID(), "AF9002", "PAR", airport,
+            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
+            VolEtat.PREVU, null, null)
+
+        every { volPort.findByDestination(airport) } returns Flux.just(v)
+
+        StepVerifier.create(service.listArrivalsTo(airport))
+            .expectNext(v)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `trafficFor merges arrival and departure streams`() {
+        val airport = "ALG"
+
+        val v1 = Vol(UUID.randomUUID(), "AF9100", airport, "TUN",
+            LocalDateTime.now(), LocalDateTime.now().plusHours(1),
+            VolEtat.PREVU, null, null)
+
+        val v2 = Vol(UUID.randomUUID(), "AF9101", "LYS", airport,
+            LocalDateTime.now(), LocalDateTime.now().plusHours(1),
+            VolEtat.PREVU, null, null)
+
+        every { volPort.findByOrigine(airport) } returns Flux.just(v1)
+        every { volPort.findByDestination(airport) } returns Flux.just(v2)
+
+        StepVerifier.create(service.trafficFor(airport))
+            .expectNext(v1, v2)
+            .verifyComplete()
     }
 }

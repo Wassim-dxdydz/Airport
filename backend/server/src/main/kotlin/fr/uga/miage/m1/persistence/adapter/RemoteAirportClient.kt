@@ -12,16 +12,16 @@ class RemoteAirportClient(
     private val remoteAirportWebClient: WebClient
 ) {
 
-    fun importVol(req: SharedVolRequest): Mono<Void> =
+    fun sendVolToPartner(req: SharedVolRequest): Mono<Void> =
         remoteAirportWebClient.post()
             .uri("/api/shared/vols/import")
             .bodyValue(req)
             .retrieve()
             .bodyToMono(Void::class.java)
 
-    fun fetchRemoteVols(): Flux<SharedVolResponse> =
+    fun fetchPartnerFlights(airportCode: String): Flux<SharedVolResponse> =
         remoteAirportWebClient.get()
-            .uri("/api/shared/vols/export")
+            .uri("/api/volExterieurs/{code}", airportCode)
             .retrieve()
             .bodyToFlux(SharedVolResponse::class.java)
 }

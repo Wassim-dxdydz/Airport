@@ -22,8 +22,8 @@ interface AvionEndpoint {
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreateAvionRequest): Mono<AvionResponse>
 
-    @PutMapping("/{id}")
-    fun update(@PathVariable id: UUID, @RequestBody req: UpdateAvionRequest): Mono<AvionResponse>
+    @PatchMapping("/{id}")
+    fun patch(@PathVariable id: UUID, @RequestBody req: UpdateAvionRequest): Mono<AvionResponse>
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

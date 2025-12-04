@@ -27,7 +27,7 @@ springdoc:
 
 remote:
   airport:
-    base-url: ${REMOTE_URL:http://localhost:8081}
+    base-url: ${REMOTE_URL:http://129.88.210.74:8080}
     code : CDG
 
 local:

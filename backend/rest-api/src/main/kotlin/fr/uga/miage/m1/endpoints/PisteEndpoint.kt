@@ -31,7 +31,7 @@ interface PisteEndpoint {
     fun delete(@PathVariable id: UUID): Mono<Unit>
 
     @GetMapping("/disponibles")
-    fun disponibles(): Flux<PisteResponse> // etat = LIBRE
+    fun disponibles(): Flux<PisteResponse>
 
     @GetMapping("/{id}/planning")
     fun planning(@PathVariable id: UUID): Flux<VolResponse>

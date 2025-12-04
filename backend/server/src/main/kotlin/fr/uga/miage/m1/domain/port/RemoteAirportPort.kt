@@ -7,5 +7,5 @@ import reactor.core.publisher.Flux
 
 interface RemoteAirportPort {
     fun sendVol(req: SharedVolRequest): Mono<Unit>
-    fun receiveVols(): Flux<SharedVolResponse>
+    fun fetchFlights(airportCode: String): Flux<SharedVolResponse>
 }

@@ -7,6 +7,7 @@ import fr.uga.miage.m1.domain.model.Vol
 import fr.uga.miage.m1.domain.port.AvionDataPort
 import fr.uga.miage.m1.domain.port.RemoteAirportPort
 import fr.uga.miage.m1.domain.port.VolDataPort
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -15,20 +16,17 @@ import reactor.core.publisher.Mono
 class SharedVolSyncService(
     private val avionPort: AvionDataPort,
     private val volPort: VolDataPort,
-    private val remotePort: RemoteAirportPort
+    private val remotePort: RemoteAirportPort,
+    @Value("\${local.airport.code}") private val myAirportCode: String,
+    @Value("\${remote.airport.code}") private val partnerAirportCode: String
 ) {
-    private val myAirportCode = "ATL"
-    private val partnerAirportCode = "CDG"
-
-    // Importe un vol reçu d'un partenaire
+    // Importer un vol avec son avion associé
     fun import(avion: Avion, vol: Vol): Mono<Vol> {
-
         val avionMono = avionPort.findByImmatriculation(avion.immatriculation)
-            .switchIfEmpty(avionPort.save(avion))   // create if missing
+            .switchIfEmpty(avionPort.save(avion))
 
-        return avionMono.flatMap { persistedAvion ->
-
-            val volToStore = vol.copy(avionId = persistedAvion.id)
+        return avionMono.flatMap { persisted ->
+            val volToStore = vol.copy(avionId = persisted.id)
 
             volPort.findByNumeroVol(vol.numeroVol)
                 .flatMap { existing ->
@@ -38,7 +36,7 @@ class SharedVolSyncService(
                         heureDepart = volToStore.heureDepart,
                         heureArrivee = volToStore.heureArrivee,
                         etat = volToStore.etat,
-                        avionId = persistedAvion.id
+                        avionId = persisted.id
                     )
                     volPort.save(merged)
                 }
@@ -46,7 +44,7 @@ class SharedVolSyncService(
         }
     }
 
-    // Exporte les vols à destination du partenaire
+    // Exporter les vols dont la destination correspond à l'aéroport partenaire
     fun exportForPartner(): Flux<Pair<Vol, Avion>> =
         volPort.findByDestination(partnerAirportCode)
             .flatMap { vol ->
@@ -54,7 +52,7 @@ class SharedVolSyncService(
                     .map { avion -> vol to avion }
             }
 
-    // Pousse un vol vers le partenaire si nécessaire
+    // Pousser un vol vers l'aéroport partenaire si sa destination correspond
     fun pushToPartner(vol: Vol): Mono<Unit> {
         if (vol.destination != partnerAirportCode)
             return Mono.just(Unit)
@@ -65,17 +63,11 @@ class SharedVolSyncService(
                 remotePort.sendVol(req).thenReturn(Unit)
             }
     }
-
-    // Synchronise les vols entrants depuis le partenaire
+    // Synchronizer les vols entrants depuis l'aéroport partenaire
     fun syncIncomingFlights(): Flux<Vol> =
-        remotePort.receiveVols()
-            // On prend uniquement les vols à destination de notre aéroport
-            .filter { shared -> shared.destination == myAirportCode }
+        remotePort.fetchFlights(myAirportCode)
             .flatMap { shared ->
-
-                // Convert remote response → domain models
                 val (avion, vol) = SharedVolInboundMapper.fromResponse(shared)
                 import(avion, vol)
             }
-
 }

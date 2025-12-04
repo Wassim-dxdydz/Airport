@@ -23,8 +23,8 @@ interface VolEndpoint {
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreateVolRequest): Mono<VolResponse>
 
-    @PutMapping("/{id}")
-    fun update(@PathVariable id: UUID, @RequestBody req: UpdateVolRequest): Mono<VolResponse>
+    @PatchMapping("/{id}")
+    fun patch(@PathVariable id: UUID, @RequestBody req: UpdateVolRequest): Mono<VolResponse>
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

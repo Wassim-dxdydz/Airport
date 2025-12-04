@@ -13,8 +13,8 @@ class RemoteAirportAdapter(
 ) : RemoteAirportPort {
 
     override fun sendVol(req: SharedVolRequest): Mono<Unit> =
-        client.importVol(req).thenReturn(Unit)
+        client.sendVolToPartner(req).thenReturn(Unit)
 
-    override fun receiveVols(): Flux<SharedVolResponse> =
-        client.fetchRemoteVols()
+    override fun fetchFlights(airportCode: String): Flux<SharedVolResponse> =
+        client.fetchPartnerFlights(airportCode)
 }

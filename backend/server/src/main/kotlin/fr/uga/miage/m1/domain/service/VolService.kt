@@ -63,6 +63,23 @@ class VolService(
                 .thenReturn(saved)
         }
 
+    fun updateBasicFields(id: UUID, updated: Vol): Mono<Vol> =
+        get(id).flatMap { current ->
+            val merged = current.copy(
+                origine = updated.origine,
+                destination = updated.destination,
+                heureDepart = updated.heureDepart,
+                heureArrivee = updated.heureArrivee
+            )
+
+            VolValidator.validate(merged)
+            volPort.save(merged)
+        }.flatMap { saved ->
+            logHistory(saved)
+                .then(syncService.pushToPartner(saved))
+                .thenReturn(saved)
+        }
+
     fun delete(id: UUID): Mono<Unit> =
         volPort.deleteById(id).thenReturn(Unit)
 

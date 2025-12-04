@@ -19,7 +19,6 @@ data class UpdateVolRequest(
     val origine: String? = null,
     val destination: String? = null,
     @field:Future val heureDepart: LocalDateTime? = null,
-    @field:Future val heureArrivee: LocalDateTime? = null,
-    val etat: VolEtat? = null,
-    val avionId: UUID? = null
+    @field:Future val heureArrivee: LocalDateTime? = null
 )
+

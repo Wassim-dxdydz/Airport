@@ -29,11 +29,11 @@ class VolController(
         volService.create(VolMapper.toDomain(req))
             .map(VolMapper::toResponse)
 
-    override fun update(id: UUID, req: UpdateVolRequest): Mono<VolResponse> =
+    override fun patch(id: UUID, req: UpdateVolRequest): Mono<VolResponse> =
         volService.get(id)
             .flatMap { current ->
-                val updated = VolMapper.toUpdatedDomain(current, req)
-                volService.update(id, updated)
+                val updated = VolMapper.toPatchedDomain(current, req)
+                volService.updateBasicFields(id, updated)
             }
             .map(VolMapper::toResponse)
 

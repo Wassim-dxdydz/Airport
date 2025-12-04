@@ -95,7 +95,7 @@ class HangarControllerTest(
     }
 
     @Test
-    fun `PUT update hangar`() {
+    fun `PATCH update hangar`() {
         val id = UUID.randomUUID()
         val req = UpdateHangarRequest(capacite = 20, etat = null)
         val updated = Hangar(id, "H1", 20, HangarEtat.DISPONIBLE)
@@ -103,7 +103,7 @@ class HangarControllerTest(
         every { hangarService.get(id) } returns Mono.just(updated.copy(capacite = 10))
         every { hangarService.update(id, any()) } returns Mono.just(updated)
 
-        client.put().uri("$base/$id")
+        client.patch().uri("$base/$id")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(req)
             .exchange()

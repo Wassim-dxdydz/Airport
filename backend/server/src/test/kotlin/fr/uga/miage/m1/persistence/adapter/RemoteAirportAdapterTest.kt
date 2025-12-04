@@ -23,25 +23,26 @@ class RemoteAirportAdapterTest {
     @Test
     fun `sendVol delegates to client`() {
         val req = mockk<SharedVolRequest>()
-        every { client.importVol(req) } returns Mono.empty()
+        every { client.sendVolToPartner(req) } returns Mono.empty()
 
         StepVerifier.create(adapter.sendVol(req))
             .expectNext(Unit)
             .verifyComplete()
 
-        verify { client.importVol(req) }
+        verify { client.sendVolToPartner(req) }
     }
 
-
     @Test
-    fun `receiveVols delegates to client`() {
+    fun `fetchFlights delegates to client`() {
+        val airport = "ALG"
         val response = mockk<SharedVolResponse>()
-        every { client.fetchRemoteVols() } returns Flux.just(response)
 
-        StepVerifier.create(adapter.receiveVols())
+        every { client.fetchPartnerFlights(airport) } returns Flux.just(response)
+
+        StepVerifier.create(adapter.fetchFlights(airport))
             .expectNext(response)
             .verifyComplete()
 
-        verify { client.fetchRemoteVols() }
+        verify { client.fetchPartnerFlights(airport) }
     }
 }

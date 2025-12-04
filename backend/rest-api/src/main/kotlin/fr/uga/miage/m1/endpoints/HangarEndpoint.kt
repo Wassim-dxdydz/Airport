@@ -23,8 +23,8 @@ interface HangarEndpoint {
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreateHangarRequest): Mono<HangarResponse>
 
-    @PutMapping("/{id}")
-    fun update(@PathVariable id: UUID, @RequestBody req: UpdateHangarRequest): Mono<HangarResponse>
+    @PatchMapping("/{id}")
+    fun patch(@PathVariable id: UUID, @RequestBody req: UpdateHangarRequest): Mono<HangarResponse>
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
