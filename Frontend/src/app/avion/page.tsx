@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-    Button
-} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
@@ -12,7 +10,6 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { MoreHorizontal, Plus, Pencil, Trash2, Link2, Unlink2, RefreshCw } from "lucide-react";
+import { MoreHorizontal, Plus, Pencil, Trash2, Unlink2, RefreshCw } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -41,13 +38,12 @@ import {
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 
-// ---------- Types ----------
 type Avion = {
     id: string;
     immatriculation: string;
     type: string;
     capacite: number;
-    etat: string;           // e.g. EN_SERVICE (stringly typed to accept any backend enum)
+    etat: string;
     hangarId?: string | null;
 };
 
@@ -55,18 +51,19 @@ type CreateAvionRequest = {
     immatriculation: string;
     type: string;
     capacite: number;
-    etat?: string;          // optional, backend defaults to EN_SERVICE
+    etat?: string;
     hangarId?: string | null;
 };
 
-type UpdateAvionRequest = Partial<Omit<CreateAvionRequest, "immatriculation">> & {
-    // immatriculation not updatable in your backend spec (create-only)
+type UpdateAvionRequest = {
+    type?: string;
+    capacite?: number;
+    etat?: string;
+    hangarId?: string | null;
 };
 
-// ---------- API base ----------
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? ""; // e.g. "http://localhost:8080"
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
-// Utility fetch wrapper
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         ...init,
@@ -83,7 +80,6 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     return res.json() as Promise<T>;
 }
 
-// ---------- Page ----------
 export default function AvionPage() {
     const [items, setItems] = useState<Avion[]>([]);
     const [loading, setLoading] = useState(true);
@@ -92,39 +88,30 @@ export default function AvionPage() {
     const [openCreate, setOpenCreate] = useState(false);
     const [openEdit, setOpenEdit] = useState<Avion | null>(null);
 
-    // form state (create/edit)
-    const [form, setForm] = useState<{
-        immatriculation: string;
-        type: string;
-        capacite: number | string;
-        etat?: string;
-        hangarId?: string | null;
-    }>({
+    const [form, setForm] = useState({
         immatriculation: "",
         type: "",
         capacite: 1,
-        etat: undefined,
-        hangarId: null,
+        etat: undefined as string | undefined,
+        hangarId: null as string | null,
     });
 
     const load = async () => {
+        setLoading(true);
+        setErr(null);
         try {
-            setLoading(true);
-            setErr(null);
             const data = await api<Avion[]>("/api/avions");
             setItems(data);
         } catch (e: any) {
-            setErr(e?.message || "Erreur de chargement");
-        } finally {
-            setLoading(false);
+            setErr(e?.message);
         }
+        setLoading(false);
     };
 
     useEffect(() => {
         load();
     }, []);
 
-    // --- helpers ---
     const resetForm = () => {
         setForm({
             immatriculation: "",
@@ -153,65 +140,62 @@ export default function AvionPage() {
 
     const createAvion = async () => {
         const payload: CreateAvionRequest = {
-            immatriculation: form.immatriculation.trim(),
-            type: form.type.trim(),
+            immatriculation: form.immatriculation,
+            type: form.type,
             capacite: Number(form.capacite),
-            ...(form.etat ? { etat: form.etat } : {}),
-            ...(form.hangarId ? { hangarId: form.hangarId } : {}),
+            etat: form.etat,
+            hangarId: form.hangarId,
         };
         await api<Avion>("/api/avions", {
             method: "POST",
             body: JSON.stringify(payload),
         });
         setOpenCreate(false);
-        await load();
+        load();
     };
 
     const updateAvion = async (id: string) => {
         const payload: UpdateAvionRequest = {
-            type: form.type.trim(),
+            type: form.type,
             capacite: Number(form.capacite),
             etat: form.etat,
-            hangarId: form.hangarId || null,
+            hangarId: form.hangarId,
         };
         await api<Avion>(`/api/avions/${id}`, {
-            method: "PUT",
+            method: "PATCH",
             body: JSON.stringify(payload),
         });
         setOpenEdit(null);
-        await load();
+        load();
     };
 
     const deleteAvion = async (id: string) => {
         if (!confirm("Supprimer cet avion ?")) return;
         await fetch(`${API_BASE}/api/avions/${id}`, { method: "DELETE" });
-        await load();
+        load();
     };
 
     const unassignHangar = async (id: string) => {
         await api<Avion>(`/api/avions/${id}/unassign-hangar`, { method: "POST" });
-        await load();
+        load();
     };
 
-    // Basic badge color mapping for state (fallback-safe)
     const badgeForEtat = (etat: string) => {
-        const normalized = etat.toUpperCase();
-        if (normalized.includes("SERVICE")) return <Badge className="bg-green-600 hover:bg-green-600">{etat}</Badge>;
-        if (normalized.includes("MAINT")) return <Badge className="bg-yellow-600 hover:bg-yellow-600">{etat}</Badge>;
-        if (normalized.includes("HORS")) return <Badge className="bg-red-600 hover:bg-red-600">{etat}</Badge>;
-        return <Badge variant="secondary">{etat}</Badge>;
+        const u = etat.toUpperCase();
+        if (u === "EN_SERVICE") return <Badge className="bg-green-600">{etat}</Badge>;
+        if (u === "EN_MAINTENANCE") return <Badge className="bg-yellow-600">{etat}</Badge>;
+        if (u === "HORS_SERVICE") return <Badge className="bg-red-600">{etat}</Badge>;
+        return <Badge>{etat}</Badge>;
     };
 
-    // Controlled input setters
-    const setField = (k: keyof typeof form, v: any) => setForm((f) => ({ ...f, [k]: v }));
+    const setField = (k: string, v: any) =>
+        setForm((f) => ({ ...f, [k]: v }));
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-            {/* Page header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Avion</h1>
-                    <p className="text-muted-foreground">Gestion de la flotte, fiches et affectations.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={load}>
@@ -225,14 +209,8 @@ export default function AvionPage() {
                 </div>
             </div>
 
-            {/* Error */}
-            {err && (
-                <Card className="border-red-300 bg-red-50 p-4 text-red-800">
-                    {err}
-                </Card>
-            )}
+            {err && <Card className="border-red-300 bg-red-50 p-4 text-red-800">{err}</Card>}
 
-            {/* Table */}
             <Card className="overflow-hidden py-0">
                 <div className="overflow-x-auto px-4 py-2">
                     <Table>
@@ -253,24 +231,20 @@ export default function AvionPage() {
                                 </TableRow>
                             ) : items.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-muted-foreground">
-                                        Aucun avion. Créez-en un pour commencer.
-                                    </TableCell>
+                                    <TableCell colSpan={6}>Aucun avion.</TableCell>
                                 </TableRow>
                             ) : (
                                 items.map((a) => (
                                     <TableRow key={a.id}>
-                                        <TableCell className="font-medium">{a.immatriculation}</TableCell>
+                                        <TableCell>{a.immatriculation}</TableCell>
                                         <TableCell>{a.type}</TableCell>
                                         <TableCell>{a.capacite}</TableCell>
                                         <TableCell>{badgeForEtat(a.etat)}</TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {a.hangarId ?? <span className="text-muted-foreground">—</span>}
-                                        </TableCell>
+                                        <TableCell>{a.hangarId ?? "—"}</TableCell>
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button size="icon" variant="ghost" aria-label="Actions">
+                                                    <Button size="icon" variant="ghost">
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
@@ -278,12 +252,15 @@ export default function AvionPage() {
                                                     <DropdownMenuItem onClick={() => startEdit(a)}>
                                                         <Pencil className="mr-2 h-4 w-4" /> Modifier
                                                     </DropdownMenuItem>
-                                                    {a.hangarId ? (
+                                                    {a.hangarId && (
                                                         <DropdownMenuItem onClick={() => unassignHangar(a.id)}>
                                                             <Unlink2 className="mr-2 h-4 w-4" /> Retirer du hangar
                                                         </DropdownMenuItem>
-                                                    ) : null}
-                                                    <DropdownMenuItem className="text-red-600" onClick={() => deleteAvion(a.id)}>
+                                                    )}
+                                                    <DropdownMenuItem
+                                                        className="text-red-600"
+                                                        onClick={() => deleteAvion(a.id)}
+                                                    >
                                                         <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
@@ -297,43 +274,35 @@ export default function AvionPage() {
                 </div>
             </Card>
 
-            {/* CREATE dialog */}
             <Dialog open={openCreate} onOpenChange={setOpenCreate}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Nouvel avion</DialogTitle>
-                        <DialogDescription>Renseignez les informations et enregistrez.</DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-2">
                         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                             <div className="space-y-2">
-                                <Label htmlFor="immatriculation">Immatriculation</Label>
+                                <Label>Immatriculation</Label>
                                 <Input
-                                    id="immatriculation"
                                     value={form.immatriculation}
                                     onChange={(e) => setField("immatriculation", e.target.value)}
-                                    placeholder="F-HABC"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="type">Type</Label>
+                                <Label>Type</Label>
                                 <Input
-                                    id="type"
                                     value={form.type}
                                     onChange={(e) => setField("type", e.target.value)}
-                                    placeholder="A320"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                             <div className="space-y-2">
-                                <Label htmlFor="capacite">Capacité</Label>
+                                <Label>Capacité</Label>
                                 <Input
-                                    id="capacite"
                                     type="number"
-                                    min={1}
                                     value={form.capacite}
                                     onChange={(e) => setField("capacite", e.target.value)}
                                 />
@@ -345,11 +314,11 @@ export default function AvionPage() {
                                     onValueChange={(v) => setField("etat", v || undefined)}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="(par défaut: EN_SERVICE)" />
+                                        <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="EN_SERVICE">EN_SERVICE</SelectItem>
-                                        <SelectItem value="EN_MAINTENANCE">EN_MAINTENANCE</SelectItem>
+                                        <SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem>
                                         <SelectItem value="HORS_SERVICE">HORS_SERVICE</SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -357,112 +326,79 @@ export default function AvionPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="hangarId">Hangar (UUID optionnel)</Label>
+                            <Label>Hangar</Label>
                             <Input
-                                id="hangarId"
                                 value={form.hangarId ?? ""}
                                 onChange={(e) => setField("hangarId", e.target.value || null)}
-                                placeholder="00000000-0000-0000-0000-000000000000"
                             />
                         </div>
                     </div>
 
-                    <DialogFooter className="gap-2">
+                    <DialogFooter>
                         <Button variant="outline" onClick={() => setOpenCreate(false)}>Annuler</Button>
-                        <Button
-                            onClick={async () => {
-                                try {
-                                    await createAvion();
-                                } catch (e: any) {
-                                    alert(e?.message || "Erreur à la création");
-                                }
-                            }}
-                        >
-                            Enregistrer
-                        </Button>
+                        <Button onClick={createAvion}>Enregistrer</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* EDIT dialog */}
             <Dialog open={!!openEdit} onOpenChange={(open) => !open && setOpenEdit(null)}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Modifier l’avion</DialogTitle>
-                        <DialogDescription>Mettez à jour les informations et enregistrez.</DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-2">
-                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label>Immatriculation</Label>
-                                <Input value={form.immatriculation} disabled />
-                                <p className="text-xs text-muted-foreground">L’immatriculation n’est pas modifiable.</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="type-edit">Type</Label>
-                                <Input
-                                    id="type-edit"
-                                    value={form.type}
-                                    onChange={(e) => setField("type", e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label htmlFor="cap-edit">Capacité</Label>
-                                <Input
-                                    id="cap-edit"
-                                    type="number"
-                                    min={1}
-                                    value={form.capacite}
-                                    onChange={(e) => setField("capacite", e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>État</Label>
-                                <Select value={form.etat ?? ""} onValueChange={(v) => setField("etat", v || undefined)}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="(laisser tel quel)" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="EN_SERVICE">EN_SERVICE</SelectItem>
-                                        <SelectItem value="EN_MAINTENANCE">EN_MAINTENANCE</SelectItem>
-                                        <SelectItem value="HORS_SERVICE">HORS_SERVICE</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        <div className="space-y-2">
+                            <Label>Immatriculation</Label>
+                            <Input value={form.immatriculation} disabled />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="hangar-edit">Hangar (UUID optionnel)</Label>
+                            <Label>Type</Label>
                             <Input
-                                id="hangar-edit"
+                                value={form.type}
+                                onChange={(e) => setField("type", e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Capacité</Label>
+                            <Input
+                                type="number"
+                                value={form.capacite}
+                                onChange={(e) => setField("capacite", e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>État</Label>
+                            <Select
+                                value={form.etat ?? ""}
+                                onValueChange={(v) => setField("etat", v)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="EN_SERVICE">EN_SERVICE</SelectItem>
+                                    <SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem>
+                                    <SelectItem value="HORS_SERVICE">HORS_SERVICE</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Hangar</Label>
+                            <Input
                                 value={form.hangarId ?? ""}
                                 onChange={(e) => setField("hangarId", e.target.value || null)}
-                                placeholder="00000000-0000-0000-0000-000000000000"
                             />
-                            <p className="text-xs text-muted-foreground">
-                                Laisser vide pour ne pas changer. Utilisez “Retirer du hangar” dans le menu de la ligne pour détacher.
-                            </p>
                         </div>
                     </div>
 
-                    <DialogFooter className="gap-2">
+                    <DialogFooter>
                         <Button variant="outline" onClick={() => setOpenEdit(null)}>Annuler</Button>
-                        <Button
-                            onClick={async () => {
-                                try {
-                                    if (!openEdit) return;
-                                    await updateAvion(openEdit.id);
-                                } catch (e: any) {
-                                    alert(e?.message || "Erreur à la mise à jour");
-                                }
-                            }}
-                        >
-                            Enregistrer
-                        </Button>
+                        <Button onClick={() => openEdit && updateAvion(openEdit.id)}>Enregistrer</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

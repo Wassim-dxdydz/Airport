@@ -39,28 +39,25 @@ import { MoreHorizontal, Plus, RefreshCw, Trash2, Construction, CheckCircle2 } f
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
-// ---------- Types ----------
 type Piste = {
     id: string;
     identifiant: string;
     longueurM: number;
-    etat: string; // Enum côté backend (ex: LIBRE, OCCUPEE, EN_MAINTENANCE, …)
+    etat: string;
 };
 
 type CreatePisteRequest = {
     identifiant: string;
     longueurM: number;
-    etat?: string; // par défaut LIBRE côté backend
+    etat?: string;
 };
 
 type UpdatePisteEtatRequest = {
     etat: string;
 };
 
-// Ajuste cette liste si ton enum diffère
-const PISTE_ETATS = ["LIBRE", "OCCUPEE", "EN_MAINTENANCE"] as const;
+const PISTE_ETATS = ["LIBRE", "OCCUPEE", "MAINTENANCE"] as const;
 
-// ---------- API helper ----------
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         ...init,
@@ -74,18 +71,15 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     return res.json();
 }
 
-// ---------- Page ----------
 export default function PistePage() {
     const [items, setItems] = useState<Piste[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [onlyDisponibles, setOnlyDisponibles] = useState(false);
 
-    // Dialogs
     const [openCreate, setOpenCreate] = useState(false);
     const [openEtat, setOpenEtat] = useState<{ id: string; etat: string } | null>(null);
 
-    // Forms
     const [createForm, setCreateForm] = useState<CreatePisteRequest>({
         identifiant: "",
         longueurM: 1000,
@@ -94,18 +88,16 @@ export default function PistePage() {
 
     const [etatForm, setEtatForm] = useState<UpdatePisteEtatRequest>({ etat: "LIBRE" });
 
-    const load = async (disponibles = false) => {
+    const load = async (only = false) => {
         try {
             setLoading(true);
             setError(null);
-            const path = disponibles ? "/api/pistes/disponibles" : "/api/pistes";
-            const data = await api<Piste[]>(path);
+            const data = await api<Piste[]>(only ? "/api/pistes/disponibles" : "/api/pistes");
             setItems(data);
         } catch (e: any) {
-            setError(e.message || "Erreur de chargement");
-        } finally {
-            setLoading(false);
+            setError(e.message || "Erreur");
         }
+        setLoading(false);
     };
 
     useEffect(() => {
@@ -113,13 +105,10 @@ export default function PistePage() {
     }, [onlyDisponibles]);
 
     const badgeForEtat = (etat: string) => {
-        const n = etat.toUpperCase();
-        if (n.includes("LIBRE"))
-            return <Badge className="bg-green-600 hover:bg-green-600">{etat}</Badge>;
-        if (n.includes("OCCUP") || n.includes("OCCUPEE"))
-            return <Badge className="bg-yellow-600 hover:bg-yellow-600">{etat}</Badge>;
-        if (n.includes("MAINT"))
-            return <Badge className="bg-red-600 hover:bg-red-600">{etat}</Badge>;
+        const e = etat.toUpperCase();
+        if (e === "LIBRE") return <Badge className="bg-green-600">{etat}</Badge>;
+        if (e === "OCCUPEE") return <Badge className="bg-yellow-600">{etat}</Badge>;
+        if (e === "MAINTENANCE") return <Badge className="bg-red-600">{etat}</Badge>;
         return <Badge variant="secondary">{etat}</Badge>;
     };
 
@@ -127,15 +116,15 @@ export default function PistePage() {
         const payload: CreatePisteRequest = {
             identifiant: createForm.identifiant.trim(),
             longueurM: Number(createForm.longueurM),
-            etat: createForm.etat || undefined,
+            etat: createForm.etat,
         };
-        await api<Piste>("/api/pistes", {
+        await api("/api/pistes", {
             method: "POST",
             body: JSON.stringify(payload),
         });
         setOpenCreate(false);
         setCreateForm({ identifiant: "", longueurM: 1000, etat: "LIBRE" });
-        await load(onlyDisponibles);
+        load(onlyDisponibles);
     };
 
     const openChangeEtat = (p: Piste) => {
@@ -145,30 +134,26 @@ export default function PistePage() {
 
     const updateEtat = async () => {
         if (!openEtat) return;
-        const payload: UpdatePisteEtatRequest = { etat: etatForm.etat };
-        await api<Piste>(`/api/pistes/${openEtat.id}/etat`, {
-            method: "PUT",
+        const payload = { etat: etatForm.etat };
+        await api(`/api/pistes/${openEtat.id}/etat`, {
+            method: "PATCH",
             body: JSON.stringify(payload),
         });
         setOpenEtat(null);
-        await load(onlyDisponibles);
+        load(onlyDisponibles);
     };
 
     const deletePiste = async (id: string) => {
         if (!confirm("Supprimer cette piste ?")) return;
         await fetch(`${API_BASE}/api/pistes/${id}`, { method: "DELETE" });
-        await load(onlyDisponibles);
+        load(onlyDisponibles);
     };
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-            {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold">Pistes</h1>
-                    <p className="text-muted-foreground">
-                        Gestion des pistes, longueur et état d’utilisation.
-                    </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <Button
@@ -198,11 +183,8 @@ export default function PistePage() {
                 </div>
             </div>
 
-            {error && (
-                <Card className="border-red-300 bg-red-50 p-4 text-red-800">{error}</Card>
-            )}
+            {error && <Card className="border-red-300 bg-red-50 p-4 text-red-800">{error}</Card>}
 
-            {/* Table */}
             <Card className="overflow-hidden py-0">
                 <div className="overflow-x-auto px-4 py-2">
                     <Table>
@@ -221,15 +203,13 @@ export default function PistePage() {
                                 </TableRow>
                             ) : items.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-muted-foreground">
-                                        Aucune piste
-                                    </TableCell>
+                                    <TableCell colSpan={4}>Aucune piste</TableCell>
                                 </TableRow>
                             ) : (
                                 items.map((p) => (
                                     <TableRow key={p.id}>
-                                        <TableCell className="font-medium">{p.identifiant}</TableCell>
-                                        <TableCell>{p.longueurM.toLocaleString("fr-FR")}</TableCell>
+                                        <TableCell>{p.identifiant}</TableCell>
+                                        <TableCell>{p.longueurM}</TableCell>
                                         <TableCell>{badgeForEtat(p.etat)}</TableCell>
                                         <TableCell className="text-right">
                                             <DropdownMenu>
@@ -246,8 +226,7 @@ export default function PistePage() {
                                                         className="text-red-600"
                                                         onClick={() => deletePiste(p.id)}
                                                     >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Supprimer
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -260,20 +239,16 @@ export default function PistePage() {
                 </div>
             </Card>
 
-            {/* CREATE dialog */}
             <Dialog open={openCreate} onOpenChange={setOpenCreate}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Nouvelle piste</DialogTitle>
-                        <DialogDescription>Ajoutez une piste.</DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-2">
                         <div className="space-y-2">
-                            <Label htmlFor="pid">Identifiant</Label>
+                            <Label>Identifiant</Label>
                             <Input
-                                id="pid"
-                                placeholder="08L/26R"
                                 value={createForm.identifiant}
                                 onChange={(e) =>
                                     setCreateForm((f) => ({ ...f, identifiant: e.target.value }))
@@ -282,9 +257,8 @@ export default function PistePage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="plong">Longueur (mètres)</Label>
+                            <Label>Longueur (mètres)</Label>
                             <Input
-                                id="plong"
                                 type="number"
                                 min={1}
                                 value={createForm.longueurM}
@@ -313,37 +287,24 @@ export default function PistePage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-muted-foreground">
-                                Par défaut : <code>LIBRE</code> si non renseigné côté backend.
-                            </p>
                         </div>
                     </div>
 
-                    <DialogFooter className="gap-2">
+                    <DialogFooter>
                         <Button variant="outline" onClick={() => setOpenCreate(false)}>
                             Annuler
                         </Button>
-                        <Button
-                            onClick={async () => {
-                                try {
-                                    await createPiste();
-                                } catch (e: any) {
-                                    alert(e?.message || "Erreur à la création");
-                                }
-                            }}
-                        >
-                            Enregistrer
-                        </Button>
+                        <Button onClick={createPiste}>Enregistrer</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* UPDATE ETAT dialog */}
             <Dialog open={!!openEtat} onOpenChange={(o) => !o && setOpenEtat(null)}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Changer l’état de la piste</DialogTitle>
                     </DialogHeader>
+
                     <div className="grid gap-4 py-2">
                         <div className="space-y-2">
                             <Label>État</Label>
@@ -364,21 +325,12 @@ export default function PistePage() {
                             </Select>
                         </div>
                     </div>
-                    <DialogFooter className="gap-2">
+
+                    <DialogFooter>
                         <Button variant="outline" onClick={() => setOpenEtat(null)}>
                             Annuler
                         </Button>
-                        <Button
-                            onClick={async () => {
-                                try {
-                                    await updateEtat();
-                                } catch (e: any) {
-                                    alert(e?.message || "Erreur mise à jour état");
-                                }
-                            }}
-                        >
-                            Mettre à jour
-                        </Button>
+                        <Button onClick={updateEtat}>Mettre à jour</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

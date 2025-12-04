@@ -49,23 +49,23 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
-/** Ajuste cette liste si ton enum VolEtat diffère */
 const VOL_ETATS = [
-    "PLANIFIE",
-    "EN_COURS",
-    "RETARDE",
-    "ANNULE",
-    "TERMINE",
+    "PREVU",
+    "EN_ATTENTE",
+    "EMBARQUEMENT",
+    "DECOLLE",
+    "EN_VOL",
+    "ARRIVE",
+    "ANNULE"
 ] as const;
 
-// ---------- Types ----------
 type Vol = {
     id: string;
     numeroVol: string;
     origine: string;
     destination: string;
-    heureDepart: string;   // ISO local (ex: "2025-11-10T14:30:00")
-    heureArrivee: string;  // idem
+    heureDepart: string;
+    heureArrivee: string;
     etat: string;
     avionId?: string | null;
     createdAt?: string | null;
@@ -76,8 +76,8 @@ type CreateVolPayload = {
     numeroVol: string;
     origine: string;
     destination: string;
-    heureDepart: string;   // LocalDateTime format
-    heureArrivee: string;  // LocalDateTime format
+    heureDepart: string;
+    heureArrivee: string;
 };
 
 type UpdateVolPayload = Partial<{
@@ -89,7 +89,6 @@ type UpdateVolPayload = Partial<{
     avionId: string | null;
 }>;
 
-// ---------- API helper ----------
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         ...init,
@@ -103,7 +102,12 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     return res.json();
 }
 
-// datetime-local helpers
+async function loadHistory(volId: string) {
+    return api<{ id: string | null; etat: string; changedAt: string }[]>(
+        `/api/vols/${volId}/history`
+    );
+}
+
 const fmt = new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "short",
     timeStyle: "short",
@@ -124,16 +128,13 @@ export default function VolPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // filters
     const [etatFilter, setEtatFilter] = useState<string>("ALL");
 
-    // dialogs
     const [openCreate, setOpenCreate] = useState(false);
     const [openEdit, setOpenEdit] = useState<Vol | null>(null);
     const [openEtat, setOpenEtat] = useState<{ id: string; etat: string } | null>(null);
     const [openAssign, setOpenAssign] = useState<{ id: string } | null>(null);
 
-    // forms
     const [createForm, setCreateForm] = useState<CreateVolPayload>({
         numeroVol: "",
         origine: "",
@@ -154,12 +155,49 @@ export default function VolPage() {
     const [etatForm, setEtatForm] = useState<string>("PLANIFIE");
     const [assignForm, setAssignForm] = useState<string>("");
 
+    const [openHistory, setOpenHistory] = useState<{ id: string } | null>(null);
+    const [historyList, setHistoryList] = useState<
+        { id: string | null; etat: string; changedAt: string }[]
+    >([]);
+
+    const [viewMode, setViewMode] = useState<"ALL" | "SORTANT" | "ENTRANT">("ALL");
+    const AIRPORT = "ATL";
+
     const load = async () => {
         try {
             setLoading(true);
             setError(null);
-            const path = etatFilter === "ALL" ? "/api/vols" : `/api/vols/etat/${etatFilter}`;
-            const data = await api<Vol[]>(path);
+
+            if (viewMode === "SORTANT") {
+                const all = await api<Vol[]>("/api/vols");
+                setVols(all.filter(v => v.origine === AIRPORT));
+                return;
+            }
+
+            if (viewMode === "ENTRANT") {
+                const internal = await api<Vol[]>("/api/vols");
+                const extern = await api<any[]>(`http://129.88.210.74:8080/api/volExterieurs/${AIRPORT}`);
+
+                const externMapped: Vol[] = extern.map(e => ({
+                    id: "-",
+                    numeroVol: e.numeroVol,
+                    origine: e.origine,
+                    destination: e.destination,
+                    heureDepart: e.heureDepart,
+                    heureArrivee: e.heureArrivee,
+                    etat: e.etat,
+                    avionId: null
+                }));
+
+                const incoming = [
+                    ...internal.filter(v => v.destination === AIRPORT),
+                    ...externMapped
+                ];
+
+                setVols(incoming);
+                return;
+            }
+            const data = await api<Vol[]>("/api/vols");
             setVols(data);
         } catch (e: any) {
             setError(e.message || "Erreur de chargement");
@@ -173,12 +211,14 @@ export default function VolPage() {
     }, [etatFilter]);
 
     const badgeForEtat = (etat: string) => {
-        const n = etat.toUpperCase();
-        if (n.includes("PLAN")) return <Badge className="bg-blue-600 hover:bg-blue-600">{etat}</Badge>;
-        if (n.includes("COURS")) return <Badge className="bg-green-600 hover:bg-green-600">{etat}</Badge>;
-        if (n.includes("RETARD")) return <Badge className="bg-yellow-600 hover:bg-yellow-600">{etat}</Badge>;
-        if (n.includes("ANNU")) return <Badge className="bg-red-600 hover:bg-red-600">{etat}</Badge>;
-        if (n.includes("TERM")) return <Badge className="bg-gray-600 hover:bg-gray-600">{etat}</Badge>;
+        const e = etat.toUpperCase();
+        if (e === "PREVU") return <Badge className="bg-blue-600">{etat}</Badge>;
+        if (e === "EN_ATTENTE") return <Badge className="bg-yellow-600">{etat}</Badge>;
+        if (e === "EMBARQUEMENT") return <Badge className="bg-purple-600">{etat}</Badge>;
+        if (e === "DECOLLE") return <Badge className="bg-orange-600">{etat}</Badge>;
+        if (e === "EN_VOL") return <Badge className="bg-green-600">{etat}</Badge>;
+        if (e === "ARRIVE") return <Badge className="bg-gray-600">{etat}</Badge>;
+        if (e === "ANNULE") return <Badge className="bg-red-600">{etat}</Badge>;
         return <Badge variant="secondary">{etat}</Badge>;
     };
 
@@ -218,7 +258,7 @@ export default function VolPage() {
             etat: editForm.etat,
             avionId: editForm.avionId ?? null,
         };
-        await api<Vol>(`/api/vols/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+        await api<Vol>(`/api/vols/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
         setOpenEdit(null);
         await load();
     };
@@ -256,16 +296,46 @@ export default function VolPage() {
         await load();
     };
 
+    const colorForEtat = (etat: string) => {
+        const e = etat.toUpperCase();
+        if (e.includes("PLAN")) return "bg-blue-600";
+        if (e.includes("COURS") || e.includes("VOL")) return "bg-green-600";
+        if (e.includes("RET")) return "bg-yellow-500";
+        if (e.includes("ANNU")) return "bg-red-600";
+        if (e.includes("TERM")) return "bg-gray-600";
+        return "bg-slate-400";
+    };
+
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-            {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold">Vols</h1>
                     <p className="text-muted-foreground">Planification, suivi et affectation avion.</p>
                 </div>
+
                 <div className="flex flex-wrap items-center gap-2">
-                    {/* Filtre état */}
+                    <Button
+                        variant={viewMode === "ALL" ? "default" : "outline"}
+                        onClick={() => setViewMode("ALL")}
+                    >
+                        Tous
+                    </Button>
+
+                    <Button
+                        variant={viewMode === "SORTANT" ? "default" : "outline"}
+                        onClick={() => setViewMode("SORTANT")}
+                    >
+                        Sortants
+                    </Button>
+
+                    <Button
+                        variant={viewMode === "ENTRANT" ? "default" : "outline"}
+                        onClick={() => setViewMode("ENTRANT")}
+                    >
+                        Entrants
+                    </Button>
+
                     <Select value={etatFilter} onValueChange={setEtatFilter}>
                         <SelectTrigger className="w-[200px]">
                             <SelectValue placeholder="Filtrer par état" />
@@ -277,10 +347,13 @@ export default function VolPage() {
                             ))}
                         </SelectContent>
                     </Select>
+
                     <Button variant="outline" onClick={load}>
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Actualiser
                     </Button>
+
+                    {/* Always visible now */}
                     <Button onClick={() => setOpenCreate(true)}>
                         <Plus className="mr-2 h-4 w-4" />
                         Nouveau vol
@@ -288,7 +361,11 @@ export default function VolPage() {
                 </div>
             </div>
 
-            {error && <Card className="border-red-300 bg-red-50 p-4 text-red-800">{error}</Card>}
+            {error && (
+                <Card className="border-red-300 bg-red-50 p-4 text-red-800">
+                    {error}
+                </Card>
+            )}
 
             {/* Table */}
             <Card className="overflow-hidden py-0">
@@ -330,12 +407,19 @@ export default function VolPage() {
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button size="icon" variant="ghost" aria-label="Actions">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
+                                                    <div>
+                                                        <Button size="icon" variant="ghost">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => setOpenEtat({ id: v.id, etat: v.etat })}>
+                                                <DropdownMenuContent
+                                                    align="end"
+                                                    sideOffset={5}
+                                                    onCloseAutoFocus={(e) => e.preventDefault()}
+                                                    onInteractOutside={(e) => e.preventDefault()}
+                                                >
+                                                <DropdownMenuItem onClick={() => setOpenEtat({ id: v.id, etat: v.etat })}>
                                                         <Flag className="mr-2 h-4 w-4" /> Changer l’état
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => setOpenEdit(v)}>
@@ -350,6 +434,19 @@ export default function VolPage() {
                                                             <Link2 className="mr-2 h-4 w-4" /> Assigner un avion
                                                         </DropdownMenuItem>
                                                     )}
+                                                    <DropdownMenuItem
+                                                        onClick={async () => {
+                                                            try {
+                                                                const data = await loadHistory(v.id);
+                                                                setHistoryList(data);
+                                                                setOpenHistory({ id: v.id });
+                                                            } catch (e: any) {
+                                                                alert("Erreur chargement historique");
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Plane className="mr-2 h-4 w-4" /> Historique
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         className="text-red-600"
                                                         onClick={() => deleteVol(v.id)}
@@ -601,6 +698,62 @@ export default function VolPage() {
                             }}
                         >
                             Assigner
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* HISTORIC */}
+            <Dialog open={!!openHistory} onOpenChange={(o) => !o && setOpenHistory(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Historique du vol</DialogTitle>
+                        <DialogDescription>
+                            Liste des changements d’état.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="max-h-80 overflow-y-auto py-4">
+                        {historyList.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">Aucun historique.</p>
+                        ) : (
+                            <div className="relative pl-4">
+                                {/* Vertical line */}
+                                <div className="absolute left-2 top-0 bottom-0 w-px bg-border" />
+
+                                {/* Events */}
+                                <div className="space-y-6">
+                                    {historyList
+                                        .sort(
+                                            (a, b) => new Date(a.changedAt).getTime() -
+                                                new Date(b.changedAt).getTime()
+                                        )
+                                        .map((h, i) => (
+                                            <div key={i} className="relative pl-6">
+                                                {/* Timeline dot */}
+                                                <div
+                                                    className={`absolute left-[-6px] top-[4px] h-3 w-3 rounded-full border-2 border-white shadow ${colorForEtat(
+                                                        h.etat
+                                                    )}`}
+                                                ></div>
+
+                                                {/* Content */}
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{h.etat}</span>
+                                                    <span className="text-xs text-muted-foreground">
+                                    {fmt.format(new Date(h.changedAt))}
+                                </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpenHistory(null)}>
+                            Fermer
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-    Button,
-} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
@@ -48,7 +46,6 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
-// ---------- Types ----------
 type Hangar = {
     id: string;
     identifiant: string;
@@ -64,20 +61,16 @@ type Avion = {
     etat: string;
 };
 
-// ---------- Helper fetch ----------
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         ...init,
         headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
         cache: "no-store",
     });
-    if (!res.ok) {
-        throw new Error(await res.text().catch(() => "Erreur HTTP"));
-    }
+    if (!res.ok) throw new Error(await res.text().catch(() => "Erreur HTTP"));
     return res.json();
 }
 
-// ---------- Page ----------
 export default function HangarPage() {
     const [items, setItems] = useState<Hangar[]>([]);
     const [loading, setLoading] = useState(true);
@@ -94,7 +87,6 @@ export default function HangarPage() {
         etat: "DISPONIBLE",
     });
 
-    // --- load hangars ---
     const load = async () => {
         try {
             setLoading(true);
@@ -102,17 +94,15 @@ export default function HangarPage() {
             const data = await api<Hangar[]>("/api/hangars");
             setItems(data);
         } catch (e: any) {
-            setError(e.message || "Erreur de chargement");
-        } finally {
-            setLoading(false);
+            setError(e.message);
         }
+        setLoading(false);
     };
 
     useEffect(() => {
         load();
     }, []);
 
-    // --- helpers ---
     const setField = (k: keyof typeof form, v: any) =>
         setForm((f) => ({ ...f, [k]: v }));
 
@@ -132,16 +122,16 @@ export default function HangarPage() {
 
     const createHangar = async () => {
         const body = {
-            identifiant: form.identifiant.trim(),
+            identifiant: form.identifiant,
             capacite: Number(form.capacite),
             etat: form.etat,
         };
-        await api<Hangar>("/api/hangars", {
+        await api("/api/hangars", {
             method: "POST",
             body: JSON.stringify(body),
         });
         setOpenCreate(false);
-        await load();
+        load();
     };
 
     const updateHangar = async (id: string) => {
@@ -149,18 +139,18 @@ export default function HangarPage() {
             capacite: Number(form.capacite),
             etat: form.etat,
         };
-        await api<Hangar>(`/api/hangars/${id}`, {
-            method: "PUT",
+        await api(`/api/hangars/${id}`, {
+            method: "PATCH",
             body: JSON.stringify(body),
         });
         setOpenEdit(null);
-        await load();
+        load();
     };
 
     const deleteHangar = async (id: string) => {
         if (!confirm("Supprimer ce hangar ?")) return;
         await fetch(`${API_BASE}/api/hangars/${id}`, { method: "DELETE" });
-        await load();
+        load();
     };
 
     const viewAvions = async (h: Hangar) => {
@@ -169,27 +159,23 @@ export default function HangarPage() {
             const data = await api<Avion[]>(`/api/hangars/${h.id}/avions`);
             setAvions(data);
         } catch (e: any) {
-            alert(e.message || "Erreur lors du chargement des avions");
+            alert(e.message);
         }
     };
 
     const badgeForEtat = (etat: string) => {
-        const n = etat.toUpperCase();
-        if (n.includes("DISP")) return <Badge className="bg-green-600">{etat}</Badge>;
-        if (n.includes("OCCU")) return <Badge className="bg-yellow-600">{etat}</Badge>;
-        if (n.includes("MAINT")) return <Badge className="bg-red-600">{etat}</Badge>;
-        return <Badge variant="secondary">{etat}</Badge>;
+        const e = etat.toUpperCase();
+        if (e === "DISPONIBLE") return <Badge className="bg-green-600">{etat}</Badge>;
+        if (e === "PLEIN") return <Badge className="bg-yellow-600">{etat}</Badge>;
+        if (e === "MAINTENANCE") return <Badge className="bg-red-600">{etat}</Badge>;
+        return <Badge>{etat}</Badge>;
     };
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Hangars</h1>
-                    <p className="text-muted-foreground">
-                        Gestion des hangars et des avions qu’ils abritent.
-                    </p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={load}>
@@ -207,7 +193,6 @@ export default function HangarPage() {
                 <Card className="border-red-300 bg-red-50 p-4 text-red-800">{error}</Card>
             )}
 
-            {/* Table */}
             <Card className="overflow-hidden py-0">
                 <div className="overflow-x-auto px-4 py-2">
                     <Table>
@@ -226,14 +211,12 @@ export default function HangarPage() {
                                 </TableRow>
                             ) : items.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-muted-foreground">
-                                        Aucun hangar
-                                    </TableCell>
+                                    <TableCell colSpan={4}>Aucun hangar</TableCell>
                                 </TableRow>
                             ) : (
                                 items.map((h) => (
                                     <TableRow key={h.id}>
-                                        <TableCell className="font-medium">{h.identifiant}</TableCell>
+                                        <TableCell>{h.identifiant}</TableCell>
                                         <TableCell>{h.capacite}</TableCell>
                                         <TableCell>{badgeForEtat(h.etat)}</TableCell>
                                         <TableCell className="text-right">
@@ -267,12 +250,10 @@ export default function HangarPage() {
                 </div>
             </Card>
 
-            {/* CREATE */}
             <Dialog open={openCreate} onOpenChange={setOpenCreate}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Nouveau hangar</DialogTitle>
-                        <DialogDescription>Renseignez les informations.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-2">
                         <div className="space-y-2">
@@ -299,8 +280,8 @@ export default function HangarPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="DISPONIBLE">DISPONIBLE</SelectItem>
-                                    <SelectItem value="OCCUPE">OCCUPE</SelectItem>
-                                    <SelectItem value="EN_MAINTENANCE">EN_MAINTENANCE</SelectItem>
+                                    <SelectItem value="PLEIN">PLEIN</SelectItem>
+                                    <SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -314,7 +295,6 @@ export default function HangarPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* EDIT */}
             <Dialog open={!!openEdit} onOpenChange={(o) => !o && setOpenEdit(null)}>
                 <DialogContent>
                     <DialogHeader>
@@ -342,8 +322,8 @@ export default function HangarPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="DISPONIBLE">DISPONIBLE</SelectItem>
-                                    <SelectItem value="OCCUPE">OCCUPE</SelectItem>
-                                    <SelectItem value="EN_MAINTENANCE">EN_MAINTENANCE</SelectItem>
+                                    <SelectItem value="PLEIN">PLEIN</SelectItem>
+                                    <SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -352,14 +332,13 @@ export default function HangarPage() {
                         <Button variant="outline" onClick={() => setOpenEdit(null)}>
                             Annuler
                         </Button>
-                        {openEdit && (
-                            <Button onClick={() => updateHangar(openEdit.id)}>Enregistrer</Button>
-                        )}
+                        <Button onClick={() => openEdit && updateHangar(openEdit.id)}>
+                            Enregistrer
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* VIEW AVIONS */}
             <Dialog open={!!openViewAvions} onOpenChange={(o) => !o && setOpenViewAvions(null)}>
                 <DialogContent>
                     <DialogHeader>
@@ -370,10 +349,7 @@ export default function HangarPage() {
                     ) : (
                         <ul className="space-y-2">
                             {avions.map((a) => (
-                                <li
-                                    key={a.id}
-                                    className="flex items-center justify-between rounded-md border p-2"
-                                >
+                                <li key={a.id} className="flex items-center justify-between rounded-md border p-2">
                                     <span className="font-medium">{a.immatriculation}</span>
                                     <Badge variant="secondary">{a.type}</Badge>
                                 </li>
