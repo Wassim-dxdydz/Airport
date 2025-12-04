@@ -5,7 +5,6 @@ import jakarta.validation.constraints.Future
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import java.time.LocalDateTime
-import java.util.UUID
 
 data class CreateVolRequest(
     @field:NotBlank val numeroVol: String,
