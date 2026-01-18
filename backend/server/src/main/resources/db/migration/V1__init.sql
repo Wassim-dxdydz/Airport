@@ -2,7 +2,7 @@
 --   TABLE HANGAR
 -- ============================
 CREATE TABLE IF NOT EXISTS hangar (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                                      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     identifiant VARCHAR(50) UNIQUE NOT NULL,
     capacite INT NOT NULL,
     etat VARCHAR(20) NOT NULL,
@@ -15,7 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_hangar_identifiant ON hangar(identifiant);
 --   TABLE PISTE
 -- ============================
 CREATE TABLE IF NOT EXISTS piste (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     identifiant VARCHAR(50) UNIQUE NOT NULL,
     longueur_m INT NOT NULL,
     etat VARCHAR(20) NOT NULL,
@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_piste_etat ON piste(etat);
 --   TABLE AVION
 -- ============================
 CREATE TABLE IF NOT EXISTS avion (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     immatriculation VARCHAR(32) UNIQUE NOT NULL,
     type VARCHAR(80) NOT NULL,
     capacite INT NOT NULL,
@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_avion_hangar ON avion(hangar_id);
 --   TABLE VOL
 -- ============================
 CREATE TABLE IF NOT EXISTS vol (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                                   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     numero_vol VARCHAR(50) NOT NULL UNIQUE,
     origine VARCHAR(3) NOT NULL,
     destination VARCHAR(3) NOT NULL,
@@ -67,7 +67,7 @@ CREATE INDEX IF NOT EXISTS idx_vol_piste  ON vol(piste_id);
 --   TABLE VOL HISTORY
 -- ============================
 CREATE TABLE IF NOT EXISTS vol_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                                           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     vol_id UUID NOT NULL REFERENCES vol(id) ON DELETE CASCADE,
     etat VARCHAR(50) NOT NULL,
     changed_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -75,3 +75,36 @@ CREATE TABLE IF NOT EXISTS vol_history (
 
 CREATE INDEX IF NOT EXISTS idx_vol_history_vol ON vol_history(vol_id);
 CREATE INDEX IF NOT EXISTS idx_vol_history_etat ON vol_history(etat);
+
+-- ============================
+--   TABLE PASSAGERS
+-- ============================
+CREATE TABLE IF NOT EXISTS passagers (
+                                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    prenom VARCHAR(255) NOT NULL,
+    nom VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    telephone VARCHAR(50),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+CREATE INDEX IF NOT EXISTS idx_passagers_email ON passagers(email);
+
+-- ============================
+--   TABLE CHECKINS
+-- ============================
+CREATE TABLE IF NOT EXISTS checkins (
+                                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    passager_id UUID NOT NULL REFERENCES passagers(id) ON DELETE CASCADE,
+    vol_id UUID NOT NULL REFERENCES vol(id) ON DELETE CASCADE,
+    numero_siege VARCHAR(10) NOT NULL,
+    heure_checkin TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT uk_checkin_vol_siege UNIQUE (vol_id, numero_siege),
+    CONSTRAINT uk_checkin_vol_passager UNIQUE (vol_id, passager_id)
+    );
+
+CREATE INDEX IF NOT EXISTS idx_checkins_vol_id ON checkins(vol_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_passager_id ON checkins(passager_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_heure ON checkins(heure_checkin);
