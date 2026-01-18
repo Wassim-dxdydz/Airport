@@ -30,8 +30,7 @@
         </dependency>
         <dependency>
             <groupId>fr.uga.miage.m1</groupId>
-            <artifactId>shared-api</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <artifactId>client-api</artifactId>
             <scope>system</scope>
             <systemPath>${project.basedir}/src/libs/client-api.jar</systemPath>
         </dependency>

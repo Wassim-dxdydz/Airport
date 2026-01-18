@@ -10,7 +10,7 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>client-api</artifactId>
+    <artifactId>api-client</artifactId>
     <name>pc-strawhats - client-api</name>
     <packaging>jar</packaging>
 

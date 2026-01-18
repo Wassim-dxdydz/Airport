@@ -20,7 +20,7 @@
     <modules>
         <module>common</module>
         <module>rest-api</module>
-        <module>client-api</module>
+        <module>api-client</module>
         <module>server</module>
     </modules>
 
@@ -141,6 +141,19 @@
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <mainClass>fr.uga.miage.m1.PcProjectApplicationKt</mainClass>
+                        <skip>false</skip>
+                        <includeSystemScope>true</includeSystemScope>
+                        <layout>JAR</layout>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
