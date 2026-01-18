@@ -2,10 +2,9 @@ package fr.uga.miage.m1.exceptions
 
 import org.junit.jupiter.api.Test
 import org.springframework.core.MethodParameter
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.support.WebExchangeBindException
-import org.springframework.http.codec.HttpMessageReader
-import org.springframework.web.server.ServerWebInputException
 import org.springframework.validation.BeanPropertyBindingResult
 import org.springframework.validation.FieldError
 import org.springframework.web.server.ResponseStatusException
@@ -47,16 +46,6 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    fun `handle IllegalArgumentException returns BAD_REQUEST`() {
-        val ex = IllegalArgumentException("Invalid argument")
-
-        val response = handler.handleIllegalArgument(ex)
-
-        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
-        assertEquals("Invalid argument", response.body!!.message)
-    }
-
-    @Test
     fun `handle NotFoundException returns NOT_FOUND`() {
         val ex = NotFoundException("Hangar not found")
 
@@ -64,6 +53,36 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals("Hangar not found", response.body!!.message)
+    }
+
+    @Test
+    fun `handle IllegalStateException returns CONFLICT`() {
+        val ex = IllegalStateException("Hangar is full")
+
+        val response = handler.handleConflict(ex)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals("Hangar is full", response.body!!.message)
+    }
+
+    @Test
+    fun `handle DuplicateKeyException returns CONFLICT`() {
+        val ex = DuplicateKeyException("Duplicate key violation")
+
+        val response = handler.handleDuplicateKey(ex)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals("Ressource déjà existante", response.body!!.message)
+    }
+
+    @Test
+    fun `handle IllegalArgumentException returns BAD_REQUEST`() {
+        val ex = IllegalArgumentException("Invalid argument")
+
+        val response = handler.handleIllegalArgument(ex)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals("Invalid argument", response.body!!.message)
     }
 
     @Test

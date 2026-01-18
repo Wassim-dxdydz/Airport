@@ -67,44 +67,6 @@ class AvionAdapterTest {
     }
 
     @Test
-    fun `save maps domain to entity and back`() {
-        val id = UUID.randomUUID()
-        val domain = Avion(id, "F-GRNB", "A320", 180, AvionEtat.EN_VOL, null)
-        val entity = AvionEntity(id, "F-GRNB", "A320", 180, AvionEtat.EN_VOL, null)
-
-        every { repo.save(entity) } returns Mono.just(entity)
-
-        StepVerifier.create(adapter.save(domain))
-            .expectNextMatches { it.id == id && it.type == "A320" }
-            .verifyComplete()
-
-        verify { repo.save(match { it.immatriculation == "F-GRNB" }) }
-    }
-
-    @Test
-    fun `existsByImmatriculation delegates to repo`() {
-        every { repo.existsByImmatriculation("F-GRNB") } returns Mono.just(true)
-
-        StepVerifier.create(adapter.existsByImmatriculation("F-GRNB"))
-            .expectNext(true)
-            .verifyComplete()
-
-        verify { repo.existsByImmatriculation("F-GRNB") }
-    }
-
-    @Test
-    fun `deleteById delegates to repo`() {
-        val id = UUID.randomUUID()
-        every { repo.deleteById(id) } returns Mono.empty()
-
-        StepVerifier.create(adapter.deleteById(id))
-            .expectNext(Unit)
-            .verifyComplete()
-
-        verify { repo.deleteById(id) }
-    }
-
-    @Test
     fun `findByEtat maps entities to domain`() {
         val e1 = AvionEntity(
             id = UUID.randomUUID(),
@@ -122,6 +84,44 @@ class AvionAdapterTest {
             .verifyComplete()
 
         verify { repo.findByEtat(AvionEtat.EN_VOL) }
+    }
+
+    @Test
+    fun `save maps domain to entity and back`() {
+        val id = UUID.randomUUID()
+        val domain = Avion(id, "F-GRNB", "A320", 180, AvionEtat.EN_VOL, null)
+        val entity = AvionEntity(id, "F-GRNB", "A320", 180, AvionEtat.EN_VOL, null)
+
+        every { repo.save(entity) } returns Mono.just(entity)
+
+        StepVerifier.create(adapter.save(domain))
+            .expectNextMatches { it.id == id && it.type == "A320" }
+            .verifyComplete()
+
+        verify { repo.save(match { it.immatriculation == "F-GRNB" }) }
+    }
+
+    @Test
+    fun `deleteById delegates to repo`() {
+        val id = UUID.randomUUID()
+        every { repo.deleteById(id) } returns Mono.empty()
+
+        StepVerifier.create(adapter.deleteById(id))
+            .expectNext(Unit)
+            .verifyComplete()
+
+        verify { repo.deleteById(id) }
+    }
+
+    @Test
+    fun `existsByImmatriculation delegates to repo`() {
+        every { repo.existsByImmatriculation("F-GRNB") } returns Mono.just(true)
+
+        StepVerifier.create(adapter.existsByImmatriculation("F-GRNB"))
+            .expectNext(true)
+            .verifyComplete()
+
+        verify { repo.existsByImmatriculation("F-GRNB") }
     }
 
     @Test
@@ -144,5 +144,15 @@ class AvionAdapterTest {
         verify { repo.findByImmatriculation("F-TEST") }
     }
 
+    @Test
+    fun `countByHangarId delegates to repo`() {
+        val hangarId = UUID.randomUUID()
+        every { repo.countByHangarId(hangarId) } returns Mono.just(5L)
 
+        StepVerifier.create(adapter.countByHangarId(hangarId))
+            .expectNext(5L)
+            .verifyComplete()
+
+        verify { repo.countByHangarId(hangarId) }
+    }
 }

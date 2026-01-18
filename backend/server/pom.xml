@@ -31,6 +31,7 @@
         <dependency>
             <groupId>fr.uga.miage.m1</groupId>
             <artifactId>client-api</artifactId>
+            <version>1.0.0</version>
             <scope>system</scope>
             <systemPath>${project.basedir}/src/libs/client-api.jar</systemPath>
         </dependency>

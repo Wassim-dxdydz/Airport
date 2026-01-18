@@ -12,6 +12,7 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.containers.PostgreSQLContainer
 import reactor.test.StepVerifier
+import java.util.UUID
 
 @Testcontainers
 @DataR2dbcTest
@@ -57,19 +58,24 @@ class AvionRepositoryTest(@Autowired private val repo: AvionRepository) {
             immatriculation = "F-2222", type = "A330",
             capacite = 250, etat = AvionEtat.EN_VOL, hangarId = null
         )
+        val a3 = AvionEntity(
+            immatriculation = "F-3333", type = "B737",
+            capacite = 200, etat = AvionEtat.MAINTENANCE, hangarId = null
+        )
 
         StepVerifier.create(
             repo.save(a1)
                 .then(repo.save(a2))
+                .then(repo.save(a3))
                 .thenMany(repo.findByEtat(AvionEtat.EN_VOL))
                 .collectList()
         )
-            .expectNextMatches { it.size == 2 }
+            .expectNextMatches { it.size == 2 && it.all { a -> a.etat == AvionEtat.EN_VOL } }
             .verifyComplete()
     }
 
     @Test
-    fun `existsByImmatriculation works`() {
+    fun `existsByImmatriculation returns true when exists`() {
         val avion = AvionEntity(
             immatriculation = "F-XXXX", type = "A320",
             capacite = 180, etat = AvionEtat.EN_VOL, hangarId = null
@@ -80,6 +86,82 @@ class AvionRepositoryTest(@Autowired private val repo: AvionRepository) {
                 .flatMap { repo.existsByImmatriculation("F-XXXX") }
         )
             .expectNext(true)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `existsByImmatriculation returns false when not exists`() {
+        StepVerifier.create(
+            repo.existsByImmatriculation("F-NONEXISTENT")
+        )
+            .expectNext(false)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `findByImmatriculation returns avion when exists`() {
+        val avion = AvionEntity(
+            immatriculation = "F-ABCD", type = "A350",
+            capacite = 300, etat = AvionEtat.EN_VOL, hangarId = null
+        )
+
+        StepVerifier.create(
+            repo.save(avion)
+                .then(repo.findByImmatriculation("F-ABCD"))
+        )
+            .expectNextMatches {
+                it.immatriculation == "F-ABCD" && it.type == "A350" && it.capacite == 300
+            }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `findByImmatriculation returns empty when not exists`() {
+        StepVerifier.create(
+            repo.findByImmatriculation("F-NOTFOUND")
+        )
+            .verifyComplete()
+    }
+
+    @Test
+    fun `findByHangarId returns all avions in hangar`() {
+        val hangarId = UUID.randomUUID()
+        val otherHangarId = UUID.randomUUID()
+
+        val a1 = AvionEntity(
+            immatriculation = "F-AAA1", type = "A320",
+            capacite = 180, etat = AvionEtat.MAINTENANCE, hangarId = hangarId
+        )
+        val a2 = AvionEntity(
+            immatriculation = "F-AAA2", type = "A330",
+            capacite = 250, etat = AvionEtat.MAINTENANCE, hangarId = hangarId
+        )
+        val a3 = AvionEntity(
+            immatriculation = "F-BBB1", type = "B777",
+            capacite = 400, etat = AvionEtat.MAINTENANCE, hangarId = otherHangarId
+        )
+
+        StepVerifier.create(
+            repo.save(a1)
+                .then(repo.save(a2))
+                .then(repo.save(a3))
+                .thenMany(repo.findByHangarId(hangarId))
+                .collectList()
+        )
+            .expectNextMatches {
+                it.size == 2 && it.all { a -> a.hangarId == hangarId }
+            }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `countByHangarId returns zero when hangar is empty`() {
+        val emptyHangarId = UUID.randomUUID()
+
+        StepVerifier.create(
+            repo.countByHangarId(emptyHangarId)
+        )
+            .expectNext(0L)
             .verifyComplete()
     }
 }

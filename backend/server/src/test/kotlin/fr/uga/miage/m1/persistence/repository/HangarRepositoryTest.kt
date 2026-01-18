@@ -30,7 +30,7 @@ class HangarRepositoryTest(@Autowired private val repo: HangarRepository) {
     }
 
     @Test
-    fun `save and findByIdentifiant`() {
+    fun `save and findById`() {
         val hangar = HangarEntity(
             identifiant = "H1",
             capacite = 10,
@@ -39,14 +39,54 @@ class HangarRepositoryTest(@Autowired private val repo: HangarRepository) {
 
         StepVerifier.create(
             repo.save(hangar)
-                .flatMap { repo.findByIdentifiant("H1") }
+                .flatMap { repo.findById(it.id!!) }
         )
-            .expectNextMatches { it.identifiant == "H1" }
+            .expectNextMatches { it.identifiant == "H1" && it.capacite == 10 }
             .verifyComplete()
     }
 
     @Test
-    fun `existsById returns true`() {
+    fun `findByIdentifiant returns hangar when exists`() {
+        val hangar = HangarEntity(
+            identifiant = "H2",
+            capacite = 15,
+            etat = HangarEtat.DISPONIBLE
+        )
+
+        StepVerifier.create(
+            repo.save(hangar)
+                .then(repo.findByIdentifiant("H2"))
+        )
+            .expectNextMatches { it.identifiant == "H2" }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `findByIdentifiant returns empty when not exists`() {
+        StepVerifier.create(
+            repo.findByIdentifiant("NONEXISTENT")
+        )
+            .verifyComplete()
+    }
+
+    @Test
+    fun `deleteByIdentifiant removes hangar`() {
+        val hangar = HangarEntity(
+            identifiant = "H3",
+            capacite = 8,
+            etat = HangarEtat.MAINTENANCE
+        )
+
+        StepVerifier.create(
+            repo.save(hangar)
+                .then(repo.deleteByIdentifiant("H3"))
+                .then(repo.findByIdentifiant("H3"))
+        )
+            .verifyComplete()
+    }
+
+    @Test
+    fun `existsById returns true when hangar exists`() {
         val hangar = HangarEntity(
             identifiant = "HX",
             capacite = 5,

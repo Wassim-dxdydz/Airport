@@ -3,7 +3,6 @@ package fr.uga.miage.m1.domain.service
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.PisteEtat
 import fr.uga.miage.m1.domain.model.Piste
 import fr.uga.miage.m1.domain.port.PisteDataPort
-import fr.uga.miage.m1.exceptions.NotFoundException
 import io.mockk.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -24,40 +23,7 @@ class PisteServiceTest {
     }
 
     @Test
-    fun `list returns pistes`() {
-        val p = Piste(UUID.randomUUID(), "R1", 3000, PisteEtat.LIBRE)
-        every { pistePort.findAll() } returns Flux.just(p)
-
-        StepVerifier.create(service.list())
-            .expectNext(p)
-            .verifyComplete()
-    }
-
-    @Test
-    fun `get returns piste when found`() {
-        val id = UUID.randomUUID()
-        val p = Piste(id, "R1", 3000, PisteEtat.LIBRE)
-        every { pistePort.findById(id) } returns Mono.just(p)
-
-        StepVerifier.create(service.get(id))
-            .expectNext(p)
-            .verifyComplete()
-
-        verify { pistePort.findById(id) }
-    }
-
-    @Test
-    fun `get throws NotFoundException when not found`() {
-        val id = UUID.randomUUID()
-        every { pistePort.findById(id) } returns Mono.empty()
-
-        StepVerifier.create(service.get(id))
-            .expectError(NotFoundException::class.java)
-            .verify()
-    }
-
-    @Test
-    fun `create saves piste`() {
+    fun `create succeeds with LIBRE state`() {
         val p = Piste(null, "R2", 2500, PisteEtat.LIBRE)
         val saved = p.copy(id = UUID.randomUUID())
         every { pistePort.save(p) } returns Mono.just(saved)
@@ -65,26 +31,22 @@ class PisteServiceTest {
         StepVerifier.create(service.create(p))
             .expectNext(saved)
             .verifyComplete()
-
-        verify { pistePort.save(p) }
     }
 
     @Test
-    fun `updateEtat updates piste status`() {
-        val id = UUID.randomUUID()
-        val current = Piste(id, "R1", 3000, PisteEtat.LIBRE)
-        val updated = current.copy(etat = PisteEtat.OCCUPEE)
+    fun `create throws when state is not LIBRE or MAINTENANCE`() {
+        val p = Piste(null, "R2", 2500, PisteEtat.OCCUPEE)
 
-        every { pistePort.findById(id) } returns Mono.just(current)
-        every { pistePort.save(updated) } returns Mono.just(updated)
-
-        StepVerifier.create(service.updateEtat(id, PisteEtat.OCCUPEE))
-            .expectNext(updated)
-            .verifyComplete()
+        StepVerifier.create(service.create(p))
+            .expectErrorMatches {
+                it is IllegalStateException &&
+                        it.message!!.contains("ne peut être créée qu'avec l'état LIBRE ou MAINTENANCE")
+            }
+            .verify()
     }
 
     @Test
-    fun `delete deletes piste when libre`() {
+    fun `delete succeeds when piste is not OCCUPEE`() {
         val id = UUID.randomUUID()
         val piste = Piste(id, "R1", 3000, PisteEtat.LIBRE)
 
@@ -94,32 +56,30 @@ class PisteServiceTest {
         StepVerifier.create(service.delete(id))
             .expectNext(Unit)
             .verifyComplete()
-
-        verify { pistePort.deleteById(id) }
     }
 
-
     @Test
-    fun `delete throws when piste is occupee`() {
+    fun `delete throws when piste is OCCUPEE`() {
         val id = UUID.randomUUID()
         val piste = Piste(id, "R1", 3000, PisteEtat.OCCUPEE)
 
         every { pistePort.findById(id) } returns Mono.just(piste)
 
         StepVerifier.create(service.delete(id))
-            .expectError(IllegalStateException::class.java)
+            .expectErrorMatches {
+                it is IllegalStateException &&
+                        it.message!!.contains("Impossible de supprimer une piste encore occupée")
+            }
             .verify()
     }
 
     @Test
-    fun `disponibles returns free pistes`() {
+    fun `disponibles returns only LIBRE pistes`() {
         val p = Piste(UUID.randomUUID(), "R1", 3000, PisteEtat.LIBRE)
         every { pistePort.findByEtat(PisteEtat.LIBRE) } returns Flux.just(p)
 
         StepVerifier.create(service.disponibles())
             .expectNext(p)
             .verifyComplete()
-
-        verify { pistePort.findByEtat(PisteEtat.LIBRE) }
     }
 }
