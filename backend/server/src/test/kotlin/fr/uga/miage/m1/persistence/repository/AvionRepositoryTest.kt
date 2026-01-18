@@ -35,7 +35,7 @@ class AvionRepositoryTest(@Autowired private val repo: AvionRepository) {
             immatriculation = "F-GRNB",
             type = "A320",
             capacite = 180,
-            etat = AvionEtat.EN_SERVICE,
+            etat = AvionEtat.EN_VOL,
             hangarId = null
         )
 
@@ -51,17 +51,17 @@ class AvionRepositoryTest(@Autowired private val repo: AvionRepository) {
     fun `findByEtat returns matching rows`() {
         val a1 = AvionEntity(
             immatriculation = "F-1111", type = "A320",
-            capacite = 180, etat = AvionEtat.EN_SERVICE, hangarId = null
+            capacite = 180, etat = AvionEtat.EN_VOL, hangarId = null
         )
         val a2 = AvionEntity(
             immatriculation = "F-2222", type = "A330",
-            capacite = 250, etat = AvionEtat.EN_SERVICE, hangarId = null
+            capacite = 250, etat = AvionEtat.EN_VOL, hangarId = null
         )
 
         StepVerifier.create(
             repo.save(a1)
                 .then(repo.save(a2))
-                .thenMany(repo.findByEtat(AvionEtat.EN_SERVICE))
+                .thenMany(repo.findByEtat(AvionEtat.EN_VOL))
                 .collectList()
         )
             .expectNextMatches { it.size == 2 }
@@ -72,7 +72,7 @@ class AvionRepositoryTest(@Autowired private val repo: AvionRepository) {
     fun `existsByImmatriculation works`() {
         val avion = AvionEntity(
             immatriculation = "F-XXXX", type = "A320",
-            capacite = 180, etat = AvionEtat.EN_SERVICE, hangarId = null
+            capacite = 180, etat = AvionEtat.EN_VOL, hangarId = null
         )
 
         StepVerifier.create(

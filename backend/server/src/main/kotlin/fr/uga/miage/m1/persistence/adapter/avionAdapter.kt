@@ -36,7 +36,11 @@ class AvionAdapter(
     override fun findByImmatriculation(immatriculation: String): Mono<Avion> =
         repo.findByImmatriculation(immatriculation).map { it.toDomain() }
 
+    // ADD THIS METHOD
+    override fun countByHangarId(hangarId: UUID): Mono<Long> =
+        repo.countByHangarId(hangarId)
 }
+
 fun AvionEntity.toDomain() = Avion(
     id = id,
     immatriculation = immatriculation,

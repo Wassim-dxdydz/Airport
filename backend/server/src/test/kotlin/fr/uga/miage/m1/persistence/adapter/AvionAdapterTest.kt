@@ -30,7 +30,7 @@ class AvionAdapterTest {
             immatriculation = "F-GRNB",
             type = "A320",
             capacite = 180,
-            etat = AvionEtat.EN_SERVICE,
+            etat = AvionEtat.EN_VOL,
             hangarId = null
         )
 
@@ -46,7 +46,7 @@ class AvionAdapterTest {
     @Test
     fun `findById returns mapped domain`() {
         val id = UUID.randomUUID()
-        val entity = AvionEntity(id, "F-GRNB", "A320", 180, AvionEtat.EN_SERVICE, null)
+        val entity = AvionEntity(id, "F-GRNB", "A320", 180, AvionEtat.EN_VOL, null)
 
         every { repo.findById(id) } returns Mono.just(entity)
 
@@ -69,8 +69,8 @@ class AvionAdapterTest {
     @Test
     fun `save maps domain to entity and back`() {
         val id = UUID.randomUUID()
-        val domain = Avion(id, "F-GRNB", "A320", 180, AvionEtat.EN_SERVICE, null)
-        val entity = AvionEntity(id, "F-GRNB", "A320", 180, AvionEtat.EN_SERVICE, null)
+        val domain = Avion(id, "F-GRNB", "A320", 180, AvionEtat.EN_VOL, null)
+        val entity = AvionEntity(id, "F-GRNB", "A320", 180, AvionEtat.EN_VOL, null)
 
         every { repo.save(entity) } returns Mono.just(entity)
 
@@ -111,17 +111,17 @@ class AvionAdapterTest {
             immatriculation = "F-GRNB",
             type = "A320",
             capacite = 180,
-            etat = AvionEtat.EN_SERVICE,
+            etat = AvionEtat.EN_VOL,
             hangarId = null
         )
 
-        every { repo.findByEtat(AvionEtat.EN_SERVICE) } returns Flux.just(e1)
+        every { repo.findByEtat(AvionEtat.EN_VOL) } returns Flux.just(e1)
 
-        StepVerifier.create(adapter.findByEtat(AvionEtat.EN_SERVICE))
+        StepVerifier.create(adapter.findByEtat(AvionEtat.EN_VOL))
             .expectNextMatches { it.immatriculation == "F-GRNB" && it.type == "A320" }
             .verifyComplete()
 
-        verify { repo.findByEtat(AvionEtat.EN_SERVICE) }
+        verify { repo.findByEtat(AvionEtat.EN_VOL) }
     }
 
     @Test
@@ -131,7 +131,7 @@ class AvionAdapterTest {
             immatriculation = "F-TEST",
             type = "A320",
             capacite = 180,
-            etat = AvionEtat.EN_SERVICE,
+            etat = AvionEtat.EN_VOL,
             hangarId = null
         )
 

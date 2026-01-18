@@ -51,6 +51,12 @@ class VolAdapter(
     override fun findByPisteId(pisteId: UUID): Flux<Vol> =
         repo.findByPisteId(pisteId).map(VolEntity::toDomain)
 
+    override fun existsByAvionIdAndEtatIn(avionId: UUID, etats: Set<VolEtat>): Mono<Boolean> =
+        repo.existsByAvionIdAndEtatIn(avionId, etats)
+
+    override fun existsById(id: UUID): Mono<Boolean> =
+        repo.existsById(id)
+
 }
 
 /* Mapping */

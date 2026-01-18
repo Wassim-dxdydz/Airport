@@ -3,6 +3,7 @@ package fr.uga.miage.m1.endpoints
 import fr.uga.miage.m1.requests.CreateAvionRequest
 import fr.uga.miage.m1.requests.UpdateAvionRequest
 import fr.uga.miage.m1.responses.AvionResponse
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
@@ -20,7 +21,7 @@ interface AvionEndpoint {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun create(@RequestBody req: CreateAvionRequest): Mono<AvionResponse>
+    fun create(@Valid @RequestBody req: CreateAvionRequest): Mono<AvionResponse>
 
     @PatchMapping("/{id}")
     fun patch(@PathVariable id: UUID, @RequestBody req: UpdateAvionRequest): Mono<AvionResponse>

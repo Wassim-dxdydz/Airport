@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -45,9 +46,15 @@ import {
     Link2,
     Unlink2,
     Flag,
+    CheckCircle2,
+    XCircle,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+const AIRPORT_CODE = "ATL";
 
 const VOL_ETATS = [
     "PREVU",
@@ -56,6 +63,7 @@ const VOL_ETATS = [
     "DECOLLE",
     "EN_VOL",
     "ARRIVE",
+    "TERMINE",
     "ANNULE"
 ] as const;
 
@@ -68,8 +76,18 @@ type Vol = {
     heureArrivee: string;
     etat: string;
     avionId?: string | null;
+    avionImmatriculation?: string | null;
+    pisteId?: string | null;
     createdAt?: string | null;
     updatedAt?: string | null;
+};
+
+type Avion = {
+    id: string;
+    immatriculation: string;
+    type: string;
+    capacite: number;
+    etat: string;
 };
 
 type CreateVolPayload = {
@@ -78,16 +96,37 @@ type CreateVolPayload = {
     destination: string;
     heureDepart: string;
     heureArrivee: string;
+    avionId: string;
 };
 
-type UpdateVolPayload = Partial<{
+type UpdateVolPayload = {
+    numeroVol: string;
     origine: string;
     destination: string;
     heureDepart: string;
     heureArrivee: string;
-    etat: string;
-    avionId: string | null;
-}>;
+    avionId?: string | null;
+};
+
+type Notification = {
+    type: 'success' | 'error';
+    message: string;
+} | null;
+
+type ValidationErrors = {
+    numeroVol?: string;
+    origine?: string;
+    destination?: string;
+    heureDepart?: string;
+    heureArrivee?: string;
+    avionId?: string;
+    etat?: string;
+};
+
+type SortConfig = {
+    key: 'numeroVol' | 'heureDepart' | 'heureArrivee' | 'avionImmatriculation' | null;
+    direction: 'asc' | 'desc' | null;
+};
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -96,8 +135,15 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
         cache: "no-store",
     });
     if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `HTTP ${res.status}`);
+        try {
+            const errorJson = await res.json();
+            throw new Error(errorJson.message || errorJson.error || "Erreur HTTP");
+        } catch (parseError: any) {
+            if (parseError instanceof Error && parseError.message !== "Erreur HTTP") {
+                throw parseError;
+            }
+            throw new Error("Erreur HTTP");
+        }
     }
     return res.json();
 }
@@ -112,28 +158,34 @@ const fmt = new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "short",
     timeStyle: "short",
 });
+
 function toLocalDateTimeInputValue(isoLike: string) {
-    // expects "YYYY-MM-DDTHH:mm[:ss]" -> "YYYY-MM-DDTHH:mm"
     return isoLike?.slice(0, 16) ?? "";
 }
+
 function fromInputToLocalDateTime(value: string) {
-    // input "YYYY-MM-DDTHH:mm" -> add seconds
     if (!value) return value;
     return value.length === 16 ? `${value}:00` : value;
 }
 
-// ---------- Page ----------
 export default function VolPage() {
-    const [vols, setVols] = useState<Vol[]>([]);
+    const [allVols, setAllVols] = useState<Vol[]>([]);
+    const [displayedVols, setDisplayedVols] = useState<Vol[]>([]);
+    const [avions, setAvions] = useState<Avion[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
+    const [notification, setNotification] = useState<Notification>(null);
+    const [viewMode, setViewMode] = useState<"ALL" | "SORTANT" | "ENTRANT">("ALL");
     const [etatFilter, setEtatFilter] = useState<string>("ALL");
+    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: null });
 
     const [openCreate, setOpenCreate] = useState(false);
     const [openEdit, setOpenEdit] = useState<Vol | null>(null);
-    const [openEtat, setOpenEtat] = useState<{ id: string; etat: string } | null>(null);
-    const [openAssign, setOpenAssign] = useState<{ id: string } | null>(null);
+    const [openEtat, setOpenEtat] = useState<{ id: string; currentEtat: string } | null>(null);
+    const [openAssign, setOpenAssign] = useState<{ id: string; currentAvionId?: string | null } | null>(null);
+    const [openHistory, setOpenHistory] = useState<{ id: string } | null>(null);
+    const [historyList, setHistoryList] = useState<
+        { id: string | null; etat: string; changedAt: string }[]
+    >([]);
 
     const [createForm, setCreateForm] = useState<CreateVolPayload>({
         numeroVol: "",
@@ -141,177 +193,356 @@ export default function VolPage() {
         destination: "",
         heureDepart: "",
         heureArrivee: "",
+        avionId: "",
     });
 
     const [editForm, setEditForm] = useState<UpdateVolPayload>({
+        numeroVol: "",
         origine: "",
         destination: "",
         heureDepart: "",
         heureArrivee: "",
-        etat: undefined,
         avionId: undefined,
     });
 
-    const [etatForm, setEtatForm] = useState<string>("PLANIFIE");
+    const [etatForm, setEtatForm] = useState<string>("PREVU");
     const [assignForm, setAssignForm] = useState<string>("");
+    const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
-    const [openHistory, setOpenHistory] = useState<{ id: string } | null>(null);
-    const [historyList, setHistoryList] = useState<
-        { id: string | null; etat: string; changedAt: string }[]
-    >([]);
-
-    const [viewMode, setViewMode] = useState<"ALL" | "SORTANT" | "ENTRANT">("ALL");
-    const AIRPORT = "ATL";
+    const showNotification = (type: 'success' | 'error', message: string) => {
+        setNotification({ type, message });
+        setTimeout(() => setNotification(null), 5000);
+    };
 
     const load = async () => {
         try {
             setLoading(true);
-            setError(null);
+            const [volsData, avionsData] = await Promise.all([
+                api<Vol[]>("/api/vols"),
+                api<Avion[]>("/api/avions")
+            ]);
+
+            setAvions(avionsData);
+
+            const volsWithImmatriculation = volsData.map(v => ({
+                ...v,
+                avionImmatriculation: v.avionId ? avionsData.find(a => a.id === v.avionId)?.immatriculation : null
+            }));
 
             if (viewMode === "SORTANT") {
-                const all = await api<Vol[]>("/api/vols");
-                setVols(all.filter(v => v.origine === AIRPORT));
-                return;
+                setAllVols(volsWithImmatriculation.filter(v => v.origine.toUpperCase() === AIRPORT_CODE));
+            } else if (viewMode === "ENTRANT") {
+                try {
+                    const extern = await api<any[]>(`http://129.88.210.74:8080/api/volExterieurs/${AIRPORT_CODE}`);
+                    const externMapped: Vol[] = extern.map(e => ({
+                        id: `ext-${e.numeroVol}`,
+                        numeroVol: e.numeroVol,
+                        origine: e.origine,
+                        destination: e.destination,
+                        heureDepart: e.heureDepart,
+                        heureArrivee: e.heureArrivee,
+                        etat: e.etat,
+                        avionId: null,
+                        avionImmatriculation: null,
+                    }));
+                    const incoming = [
+                        ...volsWithImmatriculation.filter(v => v.destination.toUpperCase() === AIRPORT_CODE),
+                        ...externMapped
+                    ];
+                    setAllVols(incoming);
+                } catch {
+                    setAllVols(volsWithImmatriculation.filter(v => v.destination.toUpperCase() === AIRPORT_CODE));
+                }
+            } else {
+                setAllVols(volsWithImmatriculation);
             }
-
-            if (viewMode === "ENTRANT") {
-                const internal = await api<Vol[]>("/api/vols");
-                const extern = await api<any[]>(`http://129.88.210.74:8080/api/volExterieurs/${AIRPORT}`);
-
-                const externMapped: Vol[] = extern.map(e => ({
-                    id: "-",
-                    numeroVol: e.numeroVol,
-                    origine: e.origine,
-                    destination: e.destination,
-                    heureDepart: e.heureDepart,
-                    heureArrivee: e.heureArrivee,
-                    etat: e.etat,
-                    avionId: null
-                }));
-
-                const incoming = [
-                    ...internal.filter(v => v.destination === AIRPORT),
-                    ...externMapped
-                ];
-
-                setVols(incoming);
-                return;
-            }
-            const data = await api<Vol[]>("/api/vols");
-            setVols(data);
         } catch (e: any) {
-            setError(e.message || "Erreur de chargement");
-        } finally {
-            setLoading(false);
+            showNotification('error', e.message);
         }
+        setLoading(false);
     };
 
     useEffect(() => {
         load();
-    }, [etatFilter]);
+    }, [viewMode]);
+
+    useEffect(() => {
+        let filtered = [...allVols];
+
+        if (etatFilter !== "ALL") {
+            filtered = filtered.filter(v => v.etat.toUpperCase() === etatFilter);
+        }
+
+        if (sortConfig.key && sortConfig.direction) {
+            filtered.sort((a, b) => {
+                let aValue: any;
+                let bValue: any;
+
+                if (sortConfig.key === 'numeroVol') {
+                    aValue = a.numeroVol;
+                    bValue = b.numeroVol;
+                } else if (sortConfig.key === 'heureDepart') {
+                    aValue = new Date(a.heureDepart).getTime();
+                    bValue = new Date(b.heureDepart).getTime();
+                } else if (sortConfig.key === 'heureArrivee') {
+                    aValue = new Date(a.heureArrivee).getTime();
+                    bValue = new Date(b.heureArrivee).getTime();
+                } else if (sortConfig.key === 'avionImmatriculation') {
+                    aValue = a.avionImmatriculation ?? '';
+                    bValue = b.avionImmatriculation ?? '';
+                }
+
+                if (typeof aValue === 'string') {
+                    return sortConfig.direction === 'asc'
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                } else {
+                    return sortConfig.direction === 'asc'
+                        ? aValue - bValue
+                        : bValue - aValue;
+                }
+            });
+        }
+
+        setDisplayedVols(filtered);
+    }, [allVols, sortConfig, etatFilter]);
+
+    const handleSort = (key: 'numeroVol' | 'heureDepart' | 'heureArrivee' | 'avionImmatriculation') => {
+        setSortConfig(prev => {
+            if (prev.key !== key) {
+                return { key, direction: 'asc' };
+            }
+            if (prev.direction === 'asc') {
+                return { key, direction: 'desc' };
+            }
+            if (prev.direction === 'desc') {
+                return { key: null, direction: null };
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+
+    const getSortIcon = (key: 'numeroVol' | 'heureDepart' | 'heureArrivee' | 'avionImmatriculation') => {
+        if (sortConfig.key !== key || sortConfig.direction === null) {
+            return <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />;
+        }
+        return sortConfig.direction === 'asc'
+            ? <ArrowUp className="ml-2 h-4 w-4 inline-block" />
+            : <ArrowDown className="ml-2 h-4 w-4 inline-block" />;
+    };
+
+    const availableAvions = avions.filter(a => a.etat === "DISPONIBLE");
+
+    const getAvionImmatriculation = (avionId: string | null | undefined): string => {
+        if (!avionId) return "—";
+        const avion = avions.find(a => a.id === avionId);
+        return avion?.immatriculation || avionId.slice(0, 8) + "...";
+    };
 
     const badgeForEtat = (etat: string) => {
         const e = etat.toUpperCase();
-        if (e === "PREVU") return <Badge className="bg-blue-600">{etat}</Badge>;
-        if (e === "EN_ATTENTE") return <Badge className="bg-yellow-600">{etat}</Badge>;
-        if (e === "EMBARQUEMENT") return <Badge className="bg-purple-600">{etat}</Badge>;
-        if (e === "DECOLLE") return <Badge className="bg-orange-600">{etat}</Badge>;
-        if (e === "EN_VOL") return <Badge className="bg-green-600">{etat}</Badge>;
-        if (e === "ARRIVE") return <Badge className="bg-gray-600">{etat}</Badge>;
-        if (e === "ANNULE") return <Badge className="bg-red-600">{etat}</Badge>;
+        if (e === "PREVU") return <Badge className="bg-blue-600 text-white">{etat}</Badge>;
+        if (e === "EN_ATTENTE") return <Badge className="bg-yellow-600 text-white">{etat}</Badge>;
+        if (e === "EMBARQUEMENT") return <Badge className="bg-purple-600 text-white">{etat}</Badge>;
+        if (e === "DECOLLE") return <Badge className="bg-orange-600 text-white">{etat}</Badge>;
+        if (e === "EN_VOL") return <Badge className="bg-green-600 text-white">{etat}</Badge>;
+        if (e === "ARRIVE") return <Badge className="bg-gray-600 text-white">{etat}</Badge>;
+        if (e === "TERMINE") return <Badge className="bg-slate-600 text-white">{etat}</Badge>;
+        if (e === "ANNULE") return <Badge className="bg-red-600 text-white">{etat}</Badge>;
         return <Badge variant="secondary">{etat}</Badge>;
     };
 
-    // actions
+    const setCreateField = (k: string, v: any) => {
+        setCreateForm((f) => ({ ...f, [k]: v }));
+        if (validationErrors[k as keyof ValidationErrors]) {
+            setValidationErrors((prev) => ({ ...prev, [k]: undefined }));
+        }
+    };
+
+    const resetCreateForm = () => {
+        setCreateForm({
+            numeroVol: "",
+            origine: "",
+            destination: "",
+            heureDepart: "",
+            heureArrivee: "",
+            avionId: "",
+        });
+        setValidationErrors({});
+    };
+
     const createVol = async () => {
-        const payload: CreateVolPayload = {
-            numeroVol: createForm.numeroVol.trim(),
-            origine: createForm.origine.trim(),
-            destination: createForm.destination.trim(),
-            heureDepart: fromInputToLocalDateTime(createForm.heureDepart),
-            heureArrivee: fromInputToLocalDateTime(createForm.heureArrivee),
-        };
-        await api<Vol>("/api/vols", { method: "POST", body: JSON.stringify(payload) });
-        setOpenCreate(false);
-        setCreateForm({ numeroVol: "", origine: "", destination: "", heureDepart: "", heureArrivee: "" });
-        await load();
+        try {
+            const payload: CreateVolPayload = {
+                numeroVol: createForm.numeroVol.trim().toUpperCase(),
+                origine: createForm.origine.trim().toUpperCase(),
+                destination: createForm.destination.trim().toUpperCase(),
+                heureDepart: fromInputToLocalDateTime(createForm.heureDepart),
+                heureArrivee: fromInputToLocalDateTime(createForm.heureArrivee),
+                avionId: createForm.avionId,
+            };
+
+            await api<Vol>("/api/vols", { method: "POST", body: JSON.stringify(payload) });
+            setOpenCreate(false);
+            resetCreateForm();
+            showNotification('success', 'Vol créé avec succès');
+            await load();
+        } catch (e: any) {
+            const errorMessage = e.message.toLowerCase();
+            const errors: ValidationErrors = {};
+
+            if (errorMessage.includes('numéro') || errorMessage.includes('numero') ||
+                errorMessage.includes('af') || errorMessage.includes('ba')) {
+                errors.numeroVol = e.message;
+            } else if (errorMessage.includes('origine') || errorMessage.includes('iata') && errorMessage.includes('origine')) {
+                errors.origine = e.message;
+            } else if (errorMessage.includes('destination') || errorMessage.includes('iata') && errorMessage.includes('destination')) {
+                errors.destination = e.message;
+            } else if (errorMessage.includes('départ') || errorMessage.includes('depart') || errorMessage.includes('futur') || errorMessage.includes('2h')) {
+                errors.heureDepart = e.message;
+            } else if (errorMessage.includes('arrivée') || errorMessage.includes('arrivee') || errorMessage.includes('durée') || errorMessage.includes('duree') || errorMessage.includes('minutes')) {
+                errors.heureArrivee = e.message;
+            } else if (errorMessage.includes('avion') || errorMessage.includes('assigné') || errorMessage.includes('assigne')) {
+                errors.avionId = e.message;
+            } else {
+                showNotification('error', e.message);
+                return;
+            }
+
+            setValidationErrors(errors);
+        }
     };
 
     const startEdit = (v: Vol) => {
         setOpenEdit(v);
         setEditForm({
+            numeroVol: v.numeroVol,
             origine: v.origine,
             destination: v.destination,
             heureDepart: toLocalDateTimeInputValue(v.heureDepart),
             heureArrivee: toLocalDateTimeInputValue(v.heureArrivee),
-            etat: v.etat,
-            avionId: v.avionId ?? undefined,
+            avionId: v.avionId,
         });
+        setValidationErrors({});
     };
 
     const updateVol = async (id: string) => {
-        const payload: UpdateVolPayload = {
-            origine: editForm.origine?.trim(),
-            destination: editForm.destination?.trim(),
-            heureDepart: editForm.heureDepart ? fromInputToLocalDateTime(editForm.heureDepart) : undefined,
-            heureArrivee: editForm.heureArrivee ? fromInputToLocalDateTime(editForm.heureArrivee) : undefined,
-            etat: editForm.etat,
-            avionId: editForm.avionId ?? null,
-        };
-        await api<Vol>(`/api/vols/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-        setOpenEdit(null);
-        await load();
+        try {
+            const payload: UpdateVolPayload = {
+                numeroVol: editForm.numeroVol.trim().toUpperCase(),
+                origine: editForm.origine.trim().toUpperCase(),
+                destination: editForm.destination.trim().toUpperCase(),
+                heureDepart: fromInputToLocalDateTime(editForm.heureDepart),
+                heureArrivee: fromInputToLocalDateTime(editForm.heureArrivee),
+                avionId: editForm.avionId,
+            };
+
+            await api<Vol>(`/api/vols/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+            setOpenEdit(null);
+            setValidationErrors({});
+            showNotification('success', 'Vol modifié avec succès');
+            await load();
+        } catch (e: any) {
+            const errorMessage = e.message.toLowerCase();
+            const errors: ValidationErrors = {};
+
+            if (errorMessage.includes('numéro') || errorMessage.includes('numero')) {
+                errors.numeroVol = e.message;
+            } else if (errorMessage.includes('origine')) {
+                errors.origine = e.message;
+            } else if (errorMessage.includes('destination')) {
+                errors.destination = e.message;
+            } else if (errorMessage.includes('départ') || errorMessage.includes('depart')) {
+                errors.heureDepart = e.message;
+            } else if (errorMessage.includes('arrivée') || errorMessage.includes('arrivee') || errorMessage.includes('durée')) {
+                errors.heureArrivee = e.message;
+            } else {
+                showNotification('error', e.message);
+                return;
+            }
+
+            setValidationErrors(errors);
+        }
     };
 
     const deleteVol = async (id: string) => {
         if (!confirm("Supprimer ce vol ?")) return;
-        await fetch(`${API_BASE}/api/vols/${id}`, { method: "DELETE" });
-        await load();
+        try {
+            await fetch(`${API_BASE}/api/vols/${id}`, { method: "DELETE" });
+            showNotification('success', 'Vol supprimé avec succès');
+            await load();
+        } catch (e: any) {
+            showNotification('error', e.message);
+        }
     };
 
     const changeEtat = async () => {
         if (!openEtat) return;
-        // Backend attend un body = VolEtat (string JSON, pas d'objet)
-        await fetch(`${API_BASE}/api/vols/${openEtat.id}/etat`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(etatForm), // => "EN_COURS"
-        }).then((r) => {
-            if (!r.ok) throw new Error("Erreur mise à jour état");
-        });
-        setOpenEtat(null);
-        await load();
+        try {
+            await fetch(`${API_BASE}/api/vols/${openEtat.id}/etat`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(etatForm),
+            }).then((r) => {
+                if (!r.ok) throw new Error("Erreur mise à jour état");
+            });
+            setOpenEtat(null);
+            showNotification('success', 'État du vol modifié avec succès');
+            await load();
+        } catch (e: any) {
+            const errorMessage = e.message.toLowerCase();
+            if (errorMessage.includes('transition') || errorMessage.includes('autorisée')) {
+                setValidationErrors({ etat: e.message });
+            } else {
+                showNotification('error', e.message);
+            }
+        }
     };
 
     const assignAvion = async () => {
         if (!openAssign || !assignForm) return;
-        await api<Vol>(`/api/vols/${openAssign.id}/assign-avion/${assignForm}`, { method: "POST" });
-        setOpenAssign(null);
-        setAssignForm("");
-        await load();
+        try {
+            await api<Vol>(`/api/vols/${openAssign.id}/assign-avion/${assignForm}`, { method: "POST" });
+            setOpenAssign(null);
+            setAssignForm("");
+            showNotification('success', 'Avion assigné avec succès');
+            await load();
+        } catch (e: any) {
+            showNotification('error', e.message);
+        }
     };
 
     const unassignAvion = async (id: string) => {
-        await api<Vol>(`/api/vols/${id}/unassign-avion`, { method: "POST" });
-        await load();
+        try {
+            await api<Vol>(`/api/vols/${id}/unassign-avion`, { method: "POST" });
+            showNotification('success', 'Avion retiré avec succès');
+            await load();
+        } catch (e: any) {
+            showNotification('error', e.message);
+        }
     };
 
     const colorForEtat = (etat: string) => {
         const e = etat.toUpperCase();
-        if (e.includes("PLAN")) return "bg-blue-600";
-        if (e.includes("COURS") || e.includes("VOL")) return "bg-green-600";
-        if (e.includes("RET")) return "bg-yellow-500";
-        if (e.includes("ANNU")) return "bg-red-600";
-        if (e.includes("TERM")) return "bg-gray-600";
+        if (e === "PREVU") return "bg-blue-600";
+        if (e === "EN_ATTENTE") return "bg-yellow-600";
+        if (e === "EMBARQUEMENT") return "bg-purple-600";
+        if (e === "DECOLLE") return "bg-orange-600";
+        if (e === "EN_VOL") return "bg-green-600";
+        if (e === "ARRIVE") return "bg-gray-600";
+        if (e === "TERMINE") return "bg-slate-600";
+        if (e === "ANNULE") return "bg-red-600";
         return "bg-slate-400";
     };
 
+    const isExternal = (volId: string) => volId.startsWith("ext-");
+
     return (
-        <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
+        <div className="mx-auto max-w-7xl px-4 py-8 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold">Vols</h1>
-                    <p className="text-muted-foreground">Planification, suivi et affectation avion.</p>
+                    <p className="text-muted-foreground">Planification, suivi et affectation avion</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -321,14 +552,12 @@ export default function VolPage() {
                     >
                         Tous
                     </Button>
-
                     <Button
                         variant={viewMode === "SORTANT" ? "default" : "outline"}
                         onClick={() => setViewMode("SORTANT")}
                     >
                         Sortants
                     </Button>
-
                     <Button
                         variant={viewMode === "ENTRANT" ? "default" : "outline"}
                         onClick={() => setViewMode("ENTRANT")}
@@ -337,7 +566,7 @@ export default function VolPage() {
                     </Button>
 
                     <Select value={etatFilter} onValueChange={setEtatFilter}>
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-[170px]">
                             <SelectValue placeholder="Filtrer par état" />
                         </SelectTrigger>
                         <SelectContent>
@@ -353,32 +582,73 @@ export default function VolPage() {
                         Actualiser
                     </Button>
 
-                    {/* Always visible now */}
-                    <Button onClick={() => setOpenCreate(true)}>
+                    <Button onClick={() => { resetCreateForm(); setOpenCreate(true); }}>
                         <Plus className="mr-2 h-4 w-4" />
                         Nouveau vol
                     </Button>
                 </div>
             </div>
 
-            {error && (
-                <Card className="border-red-300 bg-red-50 p-4 text-red-800">
-                    {error}
-                </Card>
+            {notification && (
+                <Alert
+                    className={
+                        notification.type === 'success'
+                            ? "border-green-300 bg-green-50"
+                            : "border-red-300 bg-red-50"
+                    }
+                >
+                    {notification.type === 'success' ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    ) : (
+                        <XCircle className="h-4 w-4 text-red-600" />
+                    )}
+                    <AlertDescription
+                        className={
+                            notification.type === 'success'
+                                ? "text-green-800"
+                                : "text-red-800"
+                        }
+                    >
+                        {notification.message}
+                    </AlertDescription>
+                </Alert>
             )}
 
-            {/* Table */}
             <Card className="overflow-hidden py-0">
                 <div className="overflow-x-auto px-4 py-2">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Numéro</TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('numeroVol')}
+                                >
+                                    Numéro
+                                    {getSortIcon('numeroVol')}
+                                </TableHead>
                                 <TableHead>Origine → Destination</TableHead>
-                                <TableHead>Départ</TableHead>
-                                <TableHead>Arrivée</TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('heureDepart')}
+                                >
+                                    Départ
+                                    {getSortIcon('heureDepart')}
+                                </TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('heureArrivee')}
+                                >
+                                    Arrivée
+                                    {getSortIcon('heureArrivee')}
+                                </TableHead>
                                 <TableHead>État</TableHead>
-                                <TableHead>Avion</TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('avionImmatriculation')}
+                                >
+                                    Avion
+                                    {getSortIcon('avionImmatriculation')}
+                                </TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -387,74 +657,78 @@ export default function VolPage() {
                                 <TableRow>
                                     <TableCell colSpan={7}>Chargement…</TableCell>
                                 </TableRow>
-                            ) : vols.length === 0 ? (
+                            ) : displayedVols.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-muted-foreground">
                                         Aucun vol
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                vols.map((v) => (
+                                displayedVols.map((v) => (
                                     <TableRow key={v.id}>
                                         <TableCell className="font-medium">{v.numeroVol}</TableCell>
                                         <TableCell>{v.origine} → {v.destination}</TableCell>
                                         <TableCell>{fmt.format(new Date(v.heureDepart))}</TableCell>
                                         <TableCell>{fmt.format(new Date(v.heureArrivee))}</TableCell>
                                         <TableCell>{badgeForEtat(v.etat)}</TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {v.avionId ?? <span className="text-muted-foreground">—</span>}
+                                        <TableCell className="font-medium">
+                                            {v.avionImmatriculation || "—"}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <div>
+                                            {isExternal(v.id) ? (
+                                                <span className="text-xs text-muted-foreground">Externe</span>
+                                            ) : (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
                                                         <Button size="icon" variant="ghost">
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
-                                                    </div>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent
-                                                    align="end"
-                                                    sideOffset={5}
-                                                    onCloseAutoFocus={(e) => e.preventDefault()}
-                                                    onInteractOutside={(e) => e.preventDefault()}
-                                                >
-                                                <DropdownMenuItem onClick={() => setOpenEtat({ id: v.id, etat: v.etat })}>
-                                                        <Flag className="mr-2 h-4 w-4" /> Changer l’état
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => setOpenEdit(v)}>
-                                                        <Pencil className="mr-2 h-4 w-4" /> Modifier
-                                                    </DropdownMenuItem>
-                                                    {v.avionId ? (
-                                                        <DropdownMenuItem onClick={() => unassignAvion(v.id)}>
-                                                            <Unlink2 className="mr-2 h-4 w-4" /> Retirer l’avion
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => {
+                                                            setEtatForm(v.etat);
+                                                            setOpenEtat({ id: v.id, currentEtat: v.etat });
+                                                            setValidationErrors({});
+                                                        }}>
+                                                            <Flag className="mr-2 h-4 w-4" /> Changer l'état
                                                         </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem onClick={() => setOpenAssign({ id: v.id })}>
-                                                            <Link2 className="mr-2 h-4 w-4" /> Assigner un avion
+                                                        <DropdownMenuItem onClick={() => startEdit(v)}>
+                                                            <Pencil className="mr-2 h-4 w-4" /> Modifier
                                                         </DropdownMenuItem>
-                                                    )}
-                                                    <DropdownMenuItem
-                                                        onClick={async () => {
-                                                            try {
-                                                                const data = await loadHistory(v.id);
-                                                                setHistoryList(data);
-                                                                setOpenHistory({ id: v.id });
-                                                            } catch (e: any) {
-                                                                alert("Erreur chargement historique");
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Plane className="mr-2 h-4 w-4" /> Historique
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="text-red-600"
-                                                        onClick={() => deleteVol(v.id)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                                        {v.avionId ? (
+                                                            <DropdownMenuItem onClick={() => unassignAvion(v.id)}>
+                                                                <Unlink2 className="mr-2 h-4 w-4" /> Retirer l'avion
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem onClick={() => {
+                                                                setAssignForm("");
+                                                                setOpenAssign({ id: v.id, currentAvionId: v.avionId });
+                                                            }}>
+                                                                <Link2 className="mr-2 h-4 w-4" /> Assigner un avion
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        <DropdownMenuItem
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const data = await loadHistory(v.id);
+                                                                    setHistoryList(data);
+                                                                    setOpenHistory({ id: v.id });
+                                                                } catch (e: any) {
+                                                                    showNotification('error', 'Erreur chargement historique');
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Plane className="mr-2 h-4 w-4" /> Historique
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            className="text-red-600"
+                                                            onClick={() => deleteVol(v.id)}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -464,170 +738,217 @@ export default function VolPage() {
                 </div>
             </Card>
 
-            {/* CREATE */}
-            <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-                <DialogContent>
+            {/* CREATE DIALOG */}
+            <Dialog open={openCreate} onOpenChange={(o) => {
+                if (!o) {
+                    setOpenCreate(false);
+                    setValidationErrors({});
+                }
+            }}>
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Nouveau vol</DialogTitle>
-                        <DialogDescription>Renseignez les informations du vol.</DialogDescription>
+                        <DialogDescription>Renseignez les informations du vol</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-2">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div className="space-y-2">
                                 <Label>Numéro de vol</Label>
                                 <Input
+                                    placeholder="AF1234, BA456"
                                     value={createForm.numeroVol}
-                                    onChange={(e) => setCreateForm((f) => ({ ...f, numeroVol: e.target.value }))}
-                                    placeholder="AF1234"
+                                    onChange={(e) => setCreateField("numeroVol", e.target.value.toUpperCase())}
+                                    className={validationErrors.numeroVol ? "border-red-500" : ""}
                                 />
+                                {validationErrors.numeroVol && (
+                                    <p className="text-sm text-red-600">{validationErrors.numeroVol}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label>Origine</Label>
                                 <Input
+                                    placeholder="CDG, ATL, JFK"
                                     value={createForm.origine}
-                                    onChange={(e) => setCreateForm((f) => ({ ...f, origine: e.target.value }))}
-                                    placeholder="ORY"
+                                    onChange={(e) => setCreateField("origine", e.target.value.toUpperCase())}
+                                    className={validationErrors.origine ? "border-red-500" : ""}
+                                    maxLength={3}
                                 />
+                                {validationErrors.origine && (
+                                    <p className="text-sm text-red-600">{validationErrors.origine}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label>Destination</Label>
                                 <Input
+                                    placeholder="CDG, ATL, JFK"
                                     value={createForm.destination}
-                                    onChange={(e) => setCreateForm((f) => ({ ...f, destination: e.target.value }))}
-                                    placeholder="NCE"
+                                    onChange={(e) => setCreateField("destination", e.target.value.toUpperCase())}
+                                    className={validationErrors.destination ? "border-red-500" : ""}
+                                    maxLength={3}
                                 />
+                                {validationErrors.destination && (
+                                    <p className="text-sm text-red-600">{validationErrors.destination}</p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label>Heure de départ</Label>
                                 <Input
                                     type="datetime-local"
                                     value={createForm.heureDepart}
-                                    onChange={(e) =>
-                                        setCreateForm((f) => ({ ...f, heureDepart: e.target.value }))
-                                    }
+                                    onChange={(e) => setCreateField("heureDepart", e.target.value)}
+                                    className={validationErrors.heureDepart ? "border-red-500" : ""}
                                 />
+                                {validationErrors.heureDepart && (
+                                    <p className="text-sm text-red-600">{validationErrors.heureDepart}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
-                                <Label>Heure d’arrivée</Label>
+                                <Label>Heure d'arrivée</Label>
                                 <Input
                                     type="datetime-local"
                                     value={createForm.heureArrivee}
-                                    onChange={(e) =>
-                                        setCreateForm((f) => ({ ...f, heureArrivee: e.target.value }))
-                                    }
+                                    onChange={(e) => setCreateField("heureArrivee", e.target.value)}
+                                    className={validationErrors.heureArrivee ? "border-red-500" : ""}
                                 />
+                                {validationErrors.heureArrivee && (
+                                    <p className="text-sm text-red-600">{validationErrors.heureArrivee}</p>
+                                )}
                             </div>
                         </div>
+
+                        <div className="space-y-2">
+                            <Label>Avion</Label>
+                            {availableAvions.length === 0 ? (
+                                <p className="text-sm text-muted-foreground py-2">
+                                    Aucun avion disponible
+                                </p>
+                            ) : (
+                                <>
+                                    <Select
+                                        value={createForm.avionId}
+                                        onValueChange={(v) => setCreateField("avionId", v)}
+                                    >
+                                        <SelectTrigger className={validationErrors.avionId ? "border-red-500" : ""}>
+                                            <SelectValue placeholder="Sélectionner un avion" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableAvions.map((a) => (
+                                                <SelectItem key={a.id} value={a.id}>
+                                                    {a.immatriculation} - {a.type} ({a.capacite} places)
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {validationErrors.avionId && (
+                                        <p className="text-sm text-red-600">{validationErrors.avionId}</p>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setOpenCreate(false)}>Annuler</Button>
-                        <Button
-                            onClick={async () => {
-                                try {
-                                    await createVol();
-                                } catch (e: any) {
-                                    alert(e?.message || "Erreur à la création");
-                                }
-                            }}
-                        >
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => {
+                            setOpenCreate(false);
+                            setValidationErrors({});
+                        }}>
+                            Annuler
+                        </Button>
+                        <Button onClick={createVol} disabled={availableAvions.length === 0}>
                             Enregistrer
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* EDIT */}
-            <Dialog open={!!openEdit} onOpenChange={(o) => !o && setOpenEdit(null)}>
-                <DialogContent>
+            {/* EDIT DIALOG */}
+            <Dialog open={!!openEdit} onOpenChange={(o) => {
+                if (!o) {
+                    setOpenEdit(null);
+                    setValidationErrors({});
+                }
+            }}>
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Modifier le vol {openEdit?.numeroVol}</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-2">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                                <Label>Numéro de vol</Label>
+                                <Input
+                                    value={editForm.numeroVol}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, numeroVol: e.target.value.toUpperCase() }))}
+                                    className={validationErrors.numeroVol ? "border-red-500" : ""}
+                                />
+                                {validationErrors.numeroVol && (
+                                    <p className="text-sm text-red-600">{validationErrors.numeroVol}</p>
+                                )}
+                            </div>
                             <div className="space-y-2">
                                 <Label>Origine</Label>
                                 <Input
-                                    value={editForm.origine ?? ""}
-                                    onChange={(e) => setEditForm((f) => ({ ...f, origine: e.target.value }))}
+                                    value={editForm.origine}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, origine: e.target.value.toUpperCase() }))}
+                                    className={validationErrors.origine ? "border-red-500" : ""}
+                                    maxLength={3}
                                 />
+                                {validationErrors.origine && (
+                                    <p className="text-sm text-red-600">{validationErrors.origine}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label>Destination</Label>
                                 <Input
-                                    value={editForm.destination ?? ""}
-                                    onChange={(e) => setEditForm((f) => ({ ...f, destination: e.target.value }))}
+                                    value={editForm.destination}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, destination: e.target.value.toUpperCase() }))}
+                                    className={validationErrors.destination ? "border-red-500" : ""}
+                                    maxLength={3}
                                 />
+                                {validationErrors.destination && (
+                                    <p className="text-sm text-red-600">{validationErrors.destination}</p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label>Heure de départ</Label>
                                 <Input
                                     type="datetime-local"
-                                    value={editForm.heureDepart ?? ""}
-                                    onChange={(e) =>
-                                        setEditForm((f) => ({ ...f, heureDepart: e.target.value }))
-                                    }
+                                    value={editForm.heureDepart}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, heureDepart: e.target.value }))}
+                                    className={validationErrors.heureDepart ? "border-red-500" : ""}
                                 />
+                                {validationErrors.heureDepart && (
+                                    <p className="text-sm text-red-600">{validationErrors.heureDepart}</p>
+                                )}
                             </div>
                             <div className="space-y-2">
-                                <Label>Heure d’arrivée</Label>
+                                <Label>Heure d'arrivée</Label>
                                 <Input
                                     type="datetime-local"
-                                    value={editForm.heureArrivee ?? ""}
-                                    onChange={(e) =>
-                                        setEditForm((f) => ({ ...f, heureArrivee: e.target.value }))
-                                    }
+                                    value={editForm.heureArrivee}
+                                    onChange={(e) => setEditForm((f) => ({ ...f, heureArrivee: e.target.value }))}
+                                    className={validationErrors.heureArrivee ? "border-red-500" : ""}
                                 />
+                                {validationErrors.heureArrivee && (
+                                    <p className="text-sm text-red-600">{validationErrors.heureArrivee}</p>
+                                )}
                             </div>
                         </div>
-
-                        <div className="space-y-2">
-                            <Label>État</Label>
-                            <Select
-                                value={editForm.etat ?? undefined}
-                                onValueChange={(v) => setEditForm((f) => ({ ...f, etat: v }))}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Choisir un état" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {VOL_ETATS.map((e) => (
-                                        <SelectItem key={e} value={e}>{e}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Avion (UUID — optionnel)</Label>
-                            <Input
-                                value={editForm.avionId ?? ""}
-                                onChange={(e) =>
-                                    setEditForm((f) => ({ ...f, avionId: e.target.value || null }))
-                                }
-                                placeholder="00000000-0000-0000-0000-000000000000"
-                            />
-                        </div>
                     </div>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setOpenEdit(null)}>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => {
+                            setOpenEdit(null);
+                            setValidationErrors({});
+                        }}>
                             Annuler
                         </Button>
                         {openEdit && (
-                            <Button
-                                onClick={async () => {
-                                    try {
-                                        await updateVol(openEdit.id);
-                                    } catch (e: any) {
-                                        alert(e?.message || "Erreur mise à jour");
-                                    }
-                                }}
-                            >
+                            <Button onClick={() => updateVol(openEdit.id)}>
                                 Enregistrer
                             </Button>
                         )}
@@ -635,93 +956,116 @@ export default function VolPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* CHANGE STATE */}
-            <Dialog open={!!openEtat} onOpenChange={(o) => !o && setOpenEtat(null)}>
+            {/* CHANGE STATE DIALOG */}
+            <Dialog open={!!openEtat} onOpenChange={(o) => {
+                if (!o) {
+                    setOpenEtat(null);
+                    setValidationErrors({});
+                }
+            }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Changer l’état du vol</DialogTitle>
+                        <DialogTitle>Changer l'état du vol</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-2 py-2">
-                        <Label>État</Label>
-                        <Select value={etatForm} onValueChange={setEtatForm}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {VOL_ETATS.map((e) => (
-                                    <SelectItem key={e} value={e}>{e}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="grid gap-4 py-2">
+                        <div className="space-y-2">
+                            <Label>État actuel</Label>
+                            <div className="p-2 bg-gray-100 rounded">
+                                {openEtat && badgeForEtat(openEtat.currentEtat)}
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Nouvel état</Label>
+                            <Select value={etatForm} onValueChange={setEtatForm}>
+                                <SelectTrigger className={validationErrors.etat ? "border-red-500" : ""}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {VOL_ETATS.map((e) => (
+                                        <SelectItem key={e} value={e}>{e}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {validationErrors.etat && (
+                                <p className="text-sm text-red-600">{validationErrors.etat}</p>
+                            )}
+                        </div>
                     </div>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setOpenEtat(null)}>Annuler</Button>
-                        <Button
-                            onClick={async () => {
-                                try {
-                                    await changeEtat();
-                                } catch (e: any) {
-                                    alert(e?.message || "Erreur mise à jour état");
-                                }
-                            }}
-                        >
-                            Mettre à jour
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => {
+                            setOpenEtat(null);
+                            setValidationErrors({});
+                        }}>
+                            Annuler
                         </Button>
+                        <Button onClick={changeEtat}>Mettre à jour</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* ASSIGN AVION */}
-            <Dialog open={!!openAssign} onOpenChange={(o) => !o && setOpenAssign(null)}>
+            {/* ASSIGN AVION DIALOG */}
+            <Dialog open={!!openAssign} onOpenChange={(o) => {
+                if (!o) {
+                    setOpenAssign(null);
+                    setAssignForm("");
+                }
+            }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Assigner un avion</DialogTitle>
-                        <DialogDescription>Entrez l’UUID de l’avion à associer.</DialogDescription>
+                        <DialogDescription>Sélectionnez un avion disponible</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2 py-2">
-                        <Label>AvionId (UUID)</Label>
-                        <Input
-                            value={assignForm}
-                            onChange={(e) => setAssignForm(e.target.value)}
-                            placeholder="00000000-0000-0000-0000-000000000000"
-                        />
+                        <Label>Avion</Label>
+                        {availableAvions.length === 0 ? (
+                            <p className="text-sm text-muted-foreground py-2">
+                                Aucun avion disponible
+                            </p>
+                        ) : (
+                            <Select value={assignForm} onValueChange={setAssignForm}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner un avion" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableAvions.map((a) => (
+                                        <SelectItem key={a.id} value={a.id}>
+                                            {a.immatriculation} - {a.type} ({a.capacite} places)
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
                     </div>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setOpenAssign(null)}>Annuler</Button>
-                        <Button
-                            onClick={async () => {
-                                try {
-                                    await assignAvion();
-                                } catch (e: any) {
-                                    alert(e?.message || "Erreur assignation");
-                                }
-                            }}
-                        >
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => {
+                            setOpenAssign(null);
+                            setAssignForm("");
+                        }}>
+                            Annuler
+                        </Button>
+                        <Button onClick={assignAvion} disabled={!assignForm}>
                             Assigner
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* HISTORIC */}
+            {/* HISTORY DIALOG */}
             <Dialog open={!!openHistory} onOpenChange={(o) => !o && setOpenHistory(null)}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Historique du vol</DialogTitle>
                         <DialogDescription>
-                            Liste des changements d’état.
+                            Liste des changements d'état
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="max-h-80 overflow-y-auto py-4">
                         {historyList.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">Aucun historique.</p>
+                            <p className="text-sm text-muted-foreground">Aucun historique</p>
                         ) : (
                             <div className="relative pl-4">
-                                {/* Vertical line */}
                                 <div className="absolute left-2 top-0 bottom-0 w-px bg-border" />
-
-                                {/* Events */}
                                 <div className="space-y-6">
                                     {historyList
                                         .sort(
@@ -730,19 +1074,16 @@ export default function VolPage() {
                                         )
                                         .map((h, i) => (
                                             <div key={i} className="relative pl-6">
-                                                {/* Timeline dot */}
                                                 <div
                                                     className={`absolute left-[-6px] top-[4px] h-3 w-3 rounded-full border-2 border-white shadow ${colorForEtat(
                                                         h.etat
                                                     )}`}
-                                                ></div>
-
-                                                {/* Content */}
+                                                />
                                                 <div className="flex flex-col">
                                                     <span className="font-medium">{h.etat}</span>
                                                     <span className="text-xs text-muted-foreground">
-                                    {fmt.format(new Date(h.changedAt))}
-                                </span>
+                                                        {fmt.format(new Date(h.changedAt))}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))}

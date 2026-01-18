@@ -38,13 +38,15 @@ class VolMapperTest {
     @Test
     fun `toDomain maps CreateVolRequest to Vol domain`() {
         val now = LocalDateTime.now()
+        val avionId = UUID.randomUUID()  // Create a test avion UUID
 
         val req = CreateVolRequest(
             numeroVol = "AF999",
             origine = "LYS",
             destination = "NCE",
             heureDepart = now.plusHours(1),
-            heureArrivee = now.plusHours(3)
+            heureArrivee = now.plusHours(3),
+            avionId = avionId
         )
 
         val result = VolMapper.toDomain(req)
@@ -55,10 +57,11 @@ class VolMapperTest {
         assertEquals(req.heureDepart, result.heureDepart)
         assertEquals(req.heureArrivee, result.heureArrivee)
         assertEquals(VolEtat.PREVU, result.etat)
-        assertEquals(null, result.avionId)
+        assertEquals(avionId, result.avionId)
         assertEquals(null, result.pisteId)
         assertEquals(null, result.id)
     }
+
 
     @Test
     fun `toPatchedDomain merges non-null fields and preserves existing values`() {

@@ -1,2 +1,7 @@
 package fr.uga.miage.m1.exceptions
-class NotFoundException(msg: String) : RuntimeException(msg)
+
+sealed class DomainException(
+    message: String
+) : RuntimeException(message)
+
+class NotFoundException(message: String) : DomainException(message)

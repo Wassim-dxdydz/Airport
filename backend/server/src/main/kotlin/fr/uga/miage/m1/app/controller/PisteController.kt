@@ -6,7 +6,7 @@ import fr.uga.miage.m1.responses.VolResponse
 import fr.uga.miage.m1.domain.service.PisteService
 import fr.uga.miage.m1.domain.service.VolService
 import fr.uga.miage.m1.requests.CreatePisteRequest
-import fr.uga.miage.m1.requests.UpdatePisteEtatRequest
+import fr.uga.miage.m1.requests.UpdatePisteRequest
 import fr.uga.miage.m1.responses.PisteResponse
 import fr.uga.miage.m1.endpoints.PisteEndpoint
 import org.springframework.web.bind.annotation.RestController
@@ -32,8 +32,12 @@ class PisteController(
         pisteService.create(PisteMapper.toDomain(req))
             .map(PisteMapper::toResponse)
 
-    override fun updateEtat(id: UUID, req: UpdatePisteEtatRequest): Mono<PisteResponse> =
-        pisteService.updateEtat(id, req.etat)
+    override fun patch(id: UUID, req: UpdatePisteRequest): Mono<PisteResponse> =
+        pisteService.get(id)
+            .flatMap { current ->
+                val updated = PisteMapper.toUpdatedDomain(current, req)
+                pisteService.update(id, updated)
+            }
             .map(PisteMapper::toResponse)
 
     override fun delete(id: UUID): Mono<Unit> =

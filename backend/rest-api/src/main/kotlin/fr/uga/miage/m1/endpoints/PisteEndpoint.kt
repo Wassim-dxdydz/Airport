@@ -1,7 +1,7 @@
 package fr.uga.miage.m1.endpoints
 
 import fr.uga.miage.m1.requests.CreatePisteRequest
-import fr.uga.miage.m1.requests.UpdatePisteEtatRequest
+import fr.uga.miage.m1.requests.UpdatePisteRequest
 import fr.uga.miage.m1.responses.PisteResponse
 import fr.uga.miage.m1.responses.VolResponse
 import org.springframework.http.HttpStatus
@@ -23,8 +23,8 @@ interface PisteEndpoint {
     @ResponseStatus(HttpStatus.CREATED)
     fun create(@RequestBody req: CreatePisteRequest): Mono<PisteResponse>
 
-    @PatchMapping("/{id}/etat")
-    fun updateEtat(@PathVariable id: UUID, @RequestBody req: UpdatePisteEtatRequest): Mono<PisteResponse>
+    @PatchMapping("/{id}")
+    fun patch(@PathVariable id: UUID, @RequestBody req: UpdatePisteRequest): Mono<PisteResponse>
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -35,5 +35,4 @@ interface PisteEndpoint {
 
     @GetMapping("/{id}/planning")
     fun planning(@PathVariable id: UUID): Flux<VolResponse>
-
 }

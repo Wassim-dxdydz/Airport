@@ -3,7 +3,7 @@ package fr.uga.miage.m1.app.mapper
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.PisteEtat
 import fr.uga.miage.m1.domain.model.Piste
 import fr.uga.miage.m1.requests.CreatePisteRequest
-import fr.uga.miage.m1.requests.UpdatePisteEtatRequest
+import fr.uga.miage.m1.requests.UpdatePisteRequest
 import org.junit.jupiter.api.Test
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -43,7 +43,7 @@ class PisteMapperTest {
     }
 
     @Test
-    fun `toUpdatedEtat updates only the etat field`() {
+    fun `toUpdatedDomain updates only the etat field`() {
         val existing = Piste(
             id = UUID.randomUUID(),
             identifiant = "R1",
@@ -51,9 +51,13 @@ class PisteMapperTest {
             etat = PisteEtat.LIBRE
         )
 
-        val req = UpdatePisteEtatRequest(PisteEtat.OCCUPEE)
+        val req = UpdatePisteRequest(
+            identifiant = null,
+            longueurM = null,
+            etat = PisteEtat.OCCUPEE
+        )
 
-        val updated = PisteMapper.toUpdatedEtat(existing, req)
+        val updated = PisteMapper.toUpdatedDomain(existing, req)
 
         assertEquals(existing.id, updated.id)
         assertEquals("R1", updated.identifiant)

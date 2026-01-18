@@ -4,6 +4,7 @@ import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.VolEtat
 import fr.uga.miage.m1.app.mapper.VolMapper
 import fr.uga.miage.m1.domain.service.VolService
 import fr.uga.miage.m1.endpoints.VolEndpoint
+import fr.uga.miage.m1.models.VolDto
 import fr.uga.miage.m1.requests.CreateVolRequest
 import fr.uga.miage.m1.requests.UpdateVolRequest
 import fr.uga.miage.m1.responses.VolResponse
@@ -16,7 +17,7 @@ import org.springframework.beans.factory.annotation.Value
 @RestController
 class VolController(
     private val volService: VolService,
-    @Value("\${local.airport.code}") private val airportCode: String
+    @Value("\${airport.code:ATL}") private val airportCode: String
 ) : VolEndpoint {
 
     override fun list(): Flux<VolResponse> =
@@ -33,7 +34,7 @@ class VolController(
         volService.get(id)
             .flatMap { current ->
                 val updated = VolMapper.toPatchedDomain(current, req)
-                volService.updateBasicFields(id, updated)
+                volService.update(id, updated)
             }
             .map(VolMapper::toResponse)
 
@@ -57,12 +58,16 @@ class VolController(
             .map(VolMapper::toResponse)
 
     override fun assignPiste(id: UUID, pisteId: UUID): Mono<VolResponse> =
-        volService.assignPiste(id, pisteId)
-            .map(VolMapper::toResponse)
+        Mono.error(UnsupportedOperationException(
+            "L'assignation manuelle de piste n'est pas autorisée. " +
+                    "Les pistes sont automatiquement assignées lors du décollage/atterrissage."
+        ))
 
     override fun releasePiste(id: UUID): Mono<VolResponse> =
-        volService.releasePiste(id)
-            .map(VolMapper::toResponse)
+        Mono.error(UnsupportedOperationException(
+            "La libération manuelle de piste n'est pas autorisée. " +
+                    "Les pistes sont automatiquement libérées lors des transitions d'état."
+        ))
 
     override fun listDepartures(): Flux<VolResponse> =
         volService.listDeparturesFrom(airportCode)
@@ -76,4 +81,7 @@ class VolController(
         volService.trafficFor(airportCode)
             .map(VolMapper::toResponse)
 
+    override fun getDepartures(origin: String): Flux<VolDto> {
+        return volService.findDeparturesFromOrigin(origin)
+    }
 }

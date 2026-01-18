@@ -30,7 +30,5 @@ remote:
     base-url: ${REMOTE_URL:http://129.88.210.74:8080}
     code : CDG
 
-local:
-  airport:
-    code: ATL
-    name: Hartsfield-Jackson Atlanta International Airport
+airport:
+  code: ${AIRPORT_CODE:ATL}

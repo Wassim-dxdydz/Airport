@@ -17,7 +17,7 @@ class AvionMapperTest {
             immatriculation = "F-GRNB",
             type = "A320",
             capacite = 180,
-            etat = AvionEtat.EN_SERVICE,
+            etat = AvionEtat.EN_VOL,
             hangarId = null
         )
 
@@ -26,7 +26,7 @@ class AvionMapperTest {
         assertEquals("F-GRNB", result.immatriculation)
         assertEquals("A320", result.type)
         assertEquals(180, result.capacite)
-        assertEquals(AvionEtat.EN_SERVICE, result.etat)
+        assertEquals(AvionEtat.EN_VOL, result.etat)
         assertNull(result.hangarId)
         assertNull(result.id)
     }
@@ -38,22 +38,21 @@ class AvionMapperTest {
             immatriculation = "F-GRNB",
             type = "A320",
             capacite = 180,
-            etat = AvionEtat.EN_SERVICE,
+            etat = AvionEtat.EN_VOL,
             hangarId = null
         )
 
         val req = UpdateAvionRequest(
             type = "A321",
             capacite = null,
-            etat = null,
-            hangarId = null
+            etat = null
         )
 
         val updated = AvionMapper.toUpdatedDomain(current, req)
 
         assertEquals("A321", updated.type)
         assertEquals(180, updated.capacite)
-        assertEquals(AvionEtat.EN_SERVICE, updated.etat)
+        assertEquals(AvionEtat.EN_VOL, updated.etat)
     }
 
     @Test
@@ -63,7 +62,7 @@ class AvionMapperTest {
             immatriculation = "F-GRNB",
             type = "A320",
             capacite = 180,
-            etat = AvionEtat.EN_SERVICE,
+            etat = AvionEtat.EN_VOL,
             hangarId = UUID.randomUUID()
         )
 
@@ -73,7 +72,7 @@ class AvionMapperTest {
         assertEquals("F-GRNB", resp.immatriculation)
         assertEquals("A320", resp.type)
         assertEquals(180, resp.capacite)
-        assertEquals(AvionEtat.EN_SERVICE, resp.etat)
+        assertEquals(AvionEtat.EN_VOL, resp.etat)
         assertEquals(avion.hangarId, resp.hangarId)
     }
 

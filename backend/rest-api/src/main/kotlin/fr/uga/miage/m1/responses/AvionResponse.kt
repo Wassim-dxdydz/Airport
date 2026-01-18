@@ -9,5 +9,6 @@ data class AvionResponse(
     val type: String,
     val capacite: Int,
     val etat: AvionEtat,
-    val hangarId: UUID?
+    val hangarId: UUID?,
+    val hangarIdentifiant: String?
 )

@@ -12,4 +12,5 @@ interface AvionRepository : ReactiveCrudRepository<AvionEntity, UUID> {
     fun existsByImmatriculation(immatriculation: String): Mono<Boolean>
     fun findByImmatriculation(immatriculation: String): Mono<AvionEntity>
     fun findByHangarId(hangarId: UUID): Flux<AvionEntity>
+    fun countByHangarId(hangarId: UUID): Mono<Long>
 }

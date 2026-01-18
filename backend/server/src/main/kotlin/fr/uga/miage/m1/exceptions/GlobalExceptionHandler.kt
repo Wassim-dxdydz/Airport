@@ -1,10 +1,11 @@
 package fr.uga.miage.m1.exceptions
 
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
-import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.bind.support.WebExchangeBindException
 import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDateTime
 
@@ -18,11 +19,13 @@ data class ApiErrorResponse(
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ApiErrorResponse> {
-        val errors = ex.bindingResult.fieldErrors.joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
+    @ExceptionHandler(WebExchangeBindException::class)
+    fun handleValidation(ex: WebExchangeBindException): ResponseEntity<ApiErrorResponse> {
+        val errors = ex.bindingResult.fieldErrors
+            .joinToString(", ") { "${it.field}: ${it.defaultMessage}" }
+
         return ResponseEntity(
-            ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), "Validation error: $errors"),
+            ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), errors),
             HttpStatus.BAD_REQUEST
         )
     }
@@ -34,18 +37,32 @@ class GlobalExceptionHandler {
             ex.statusCode
         )
 
-    @ExceptionHandler(IllegalArgumentException::class)
-    fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ApiErrorResponse> =
-        ResponseEntity(
-            ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.message ?: "Requête invalide"),
-            HttpStatus.BAD_REQUEST
-        )
-
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFound(ex: NotFoundException): ResponseEntity<ApiErrorResponse> =
         ResponseEntity(
             ApiErrorResponse(HttpStatus.NOT_FOUND.value(), ex.message ?: "Ressource non trouvée"),
             HttpStatus.NOT_FOUND
+        )
+
+    @ExceptionHandler(IllegalStateException::class)
+    fun handleConflict(ex: IllegalStateException): ResponseEntity<ApiErrorResponse> =
+        ResponseEntity(
+            ApiErrorResponse(HttpStatus.CONFLICT.value(), ex.message ?: "Conflit"),
+            HttpStatus.CONFLICT
+        )
+
+    @ExceptionHandler(DuplicateKeyException::class)
+    fun handleDuplicateKey(ex: DuplicateKeyException): ResponseEntity<ApiErrorResponse> =
+        ResponseEntity(
+            ApiErrorResponse(HttpStatus.CONFLICT.value(), "Ressource déjà existante"),
+            HttpStatus.CONFLICT
+        )
+
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ApiErrorResponse> =
+        ResponseEntity(
+            ApiErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.message ?: "Requête invalide"),
+            HttpStatus.BAD_REQUEST
         )
 
     @ExceptionHandler(Exception::class)

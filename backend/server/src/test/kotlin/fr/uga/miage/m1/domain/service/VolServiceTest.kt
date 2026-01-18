@@ -1,14 +1,14 @@
 package fr.uga.miage.m1.domain.service
 
+import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.AvionEtat
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.PisteEtat
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.VolEtat
 import fr.uga.miage.m1.domain.model.Vol
 import fr.uga.miage.m1.domain.model.VolHistory
-import fr.uga.miage.m1.domain.model.Piste
+import fr.uga.miage.m1.domain.model.Avion
 import fr.uga.miage.m1.domain.port.AvionDataPort
 import fr.uga.miage.m1.domain.port.PisteDataPort
 import fr.uga.miage.m1.domain.port.VolDataPort
-import fr.uga.miage.m1.domain.port.VolHistoryDataPort
 import fr.uga.miage.m1.exceptions.NotFoundException
 import io.mockk.*
 import org.junit.jupiter.api.BeforeEach
@@ -23,10 +23,9 @@ class VolServiceTest {
 
     private lateinit var volPort: VolDataPort
     private lateinit var avionPort: AvionDataPort
-    private lateinit var strategy: VolStatusStrategy
     private lateinit var pistePort: PisteDataPort
-    private lateinit var volHistoryPort: VolHistoryDataPort
-    private lateinit var syncService: SharedVolSyncService
+    private lateinit var volHistoryService: VolHistoryService
+    private lateinit var pisteService: PisteService
 
     private lateinit var service: VolService
 
@@ -34,16 +33,22 @@ class VolServiceTest {
     fun setup() {
         volPort = mockk()
         avionPort = mockk()
-        strategy = mockk()
         pistePort = mockk()
-        volHistoryPort = mockk()
-        syncService = mockk()
+        volHistoryService = mockk()
+        pisteService = mockk()
 
-        every { volHistoryPort.save(any()) } returns Mono.just(
+        every { volHistoryService.save(any()) } returns Mono.just(
             VolHistory(id = UUID.randomUUID(), volId = UUID.randomUUID(), etat = VolEtat.PREVU)
         )
 
-        service = VolService(volPort, avionPort, syncService, volHistoryPort, strategy, pistePort)
+        service = VolService(
+            volPort,
+            avionPort,
+            volHistoryService,
+            pistePort,
+            pisteService,
+            myAirportCode = "ATL"
+        )
     }
 
     @Test
@@ -84,7 +89,7 @@ class VolServiceTest {
     }
 
     @Test
-    fun `create sets etat PREVU, saves and pushes to partner`() {
+    fun `create sets etat PREVU and saves`() {
         val now = LocalDateTime.now()
         val vol = Vol(null, "AF2000", "CDG", "LHR",
             now.plusHours(1), now.plusHours(2),
@@ -93,19 +98,17 @@ class VolServiceTest {
         val saved = vol.copy(id = UUID.randomUUID())
 
         every { volPort.save(any()) } returns Mono.just(saved)
-        every { syncService.pushToPartner(saved) } returns Mono.empty()
 
         StepVerifier.create(service.create(vol))
             .expectNext(saved)
             .verifyComplete()
 
         verify { volPort.save(any()) }
-        verify { syncService.pushToPartner(saved) }
-        verify { volHistoryPort.save(any()) }
+        verify { volHistoryService.save(any()) }
     }
 
     @Test
-    fun `update merges fields, saves and pushes to partner`() {
+    fun `update merges fields and saves`() {
         val id = UUID.randomUUID()
         val now = LocalDateTime.now()
 
@@ -117,15 +120,13 @@ class VolServiceTest {
 
         every { volPort.findById(id) } returns Mono.just(existing)
         every { volPort.save(any()) } returns Mono.just(updated)
-        every { syncService.pushToPartner(updated) } returns Mono.empty()
 
         StepVerifier.create(service.update(id, updated))
             .expectNext(updated)
             .verifyComplete()
 
         verify { volPort.save(match { it.origine == "MRS" }) }
-        verify { syncService.pushToPartner(updated) }
-        verify { volHistoryPort.save(any()) }
+        verify { volHistoryService.save(any()) }
     }
 
     @Test
@@ -140,7 +141,6 @@ class VolServiceTest {
 
         every { volPort.findById(id) } returns Mono.just(existing)
         every { volPort.save(any()) } returns Mono.just(patched)
-        every { syncService.pushToPartner(patched) } returns Mono.empty()
 
         StepVerifier.create(service.updateBasicFields(id, patched))
             .expectNext(patched)
@@ -152,6 +152,7 @@ class VolServiceTest {
         val volId = UUID.randomUUID()
         val avionId = UUID.randomUUID()
 
+        every { volPort.findById(volId) } returns Mono.just(mockk())
         every { avionPort.findById(avionId) } returns Mono.empty()
 
         StepVerifier.create(service.assignAvion(volId, avionId))
@@ -163,14 +164,24 @@ class VolServiceTest {
     fun `assignAvion succeeds`() {
         val volId = UUID.randomUUID()
         val avionId = UUID.randomUUID()
+        val hangarId = UUID.randomUUID()
         val now = LocalDateTime.now()
 
         val current = Vol(volId, "AF4000", "CDG", "MAD",
             now.plusHours(1), now.plusHours(3), VolEtat.PREVU, null, null)
 
+        val avion = Avion(
+            id = avionId,
+            immatriculation = "F-ABCD",
+            type = "A320",
+            capacite = 150,
+            etat = AvionEtat.DISPONIBLE,
+            hangarId = hangarId
+        )
+
         val updated = current.copy(avionId = avionId)
 
-        every { avionPort.findById(avionId) } returns Mono.just(mockk())
+        every { avionPort.findById(avionId) } returns Mono.just(avion)
         every { volPort.findById(volId) } returns Mono.just(current)
         every { volPort.save(any()) } returns Mono.just(updated)
 
@@ -185,7 +196,7 @@ class VolServiceTest {
         val now = LocalDateTime.now()
 
         val current = Vol(id, "AF5000", "MAD", "CDG",
-            now.plusHours(1), now.plusHours(3), VolEtat.PREVU, UUID.randomUUID(), UUID.randomUUID())
+            now.plusHours(1), now.plusHours(3), VolEtat.PREVU, UUID.randomUUID(), null)
 
         val updated = current.copy(avionId = null)
 
@@ -203,13 +214,12 @@ class VolServiceTest {
         val now = LocalDateTime.now()
         val current = Vol(id, "AF6000", "CDG", "LIS",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.EN_ATTENTE, null, null)
+            VolEtat.PREVU, UUID.randomUUID(), null)
 
-        val target = VolEtat.EMBARQUEMENT
+        val target = VolEtat.EN_ATTENTE
         val updated = current.copy(etat = target)
 
         every { volPort.findById(id) } returns Mono.just(current)
-        every { strategy.canTransition(current.etat, target) } returns true
         every { volPort.save(any()) } returns Mono.just(updated)
 
         StepVerifier.create(service.updateEtat(id, target))
@@ -224,100 +234,17 @@ class VolServiceTest {
 
         val current = Vol(id, "AF6001", "LIS", "CDG",
             now.plusHours(1), now.plusHours(3),
-            VolEtat.ARRIVE, null, null)
+            VolEtat.ARRIVE, UUID.randomUUID(), null)
 
-        val target = VolEtat.DECOLLE
+        val target = VolEtat.PREVU
 
         every { volPort.findById(id) } returns Mono.just(current)
-        every { strategy.canTransition(current.etat, target) } returns false
 
         StepVerifier.create(service.updateEtat(id, target))
-            .expectError(IllegalArgumentException::class.java)
+            .expectError(IllegalStateException::class.java)
             .verify()
 
         verify(exactly = 0) { volPort.save(any()) }
-    }
-
-    @Test
-    fun `assignPiste succeeds when piste available`() {
-        val volId = UUID.randomUUID()
-        val pisteId = UUID.randomUUID()
-
-        val vol = Vol(volId, "AF7000", "CDG", "ALG",
-            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
-            VolEtat.PREVU, null, null)
-
-        val piste = Piste(pisteId, "P1", 3200, PisteEtat.LIBRE)
-
-        val updatedVol = vol.copy(pisteId = pisteId)
-        val updatedPiste = piste.copy(etat = PisteEtat.OCCUPEE)
-
-        every { volPort.findById(volId) } returns Mono.just(vol)
-        every { pistePort.findById(pisteId) } returns Mono.just(piste)
-        every { pistePort.save(updatedPiste) } returns Mono.just(updatedPiste)
-        every { volPort.save(updatedVol) } returns Mono.just(updatedVol)
-
-        StepVerifier.create(service.assignPiste(volId, pisteId))
-            .expectNext(updatedVol)
-            .verifyComplete()
-    }
-
-    @Test
-    fun `assignPiste fails when piste not free`() {
-        val volId = UUID.randomUUID()
-        val pisteId = UUID.randomUUID()
-
-        val vol = Vol(volId, "AF7001", "CDG", "ALG",
-            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
-            VolEtat.PREVU, null, null)
-
-        val piste = Piste(pisteId, "P1", 3200, PisteEtat.OCCUPEE)
-
-        every { volPort.findById(volId) } returns Mono.just(vol)
-        every { pistePort.findById(pisteId) } returns Mono.just(piste)
-
-        StepVerifier.create(service.assignPiste(volId, pisteId))
-            .expectError(IllegalStateException::class.java)
-            .verify()
-    }
-
-    @Test
-    fun `releasePiste succeeds`() {
-        val volId = UUID.randomUUID()
-        val pisteId = UUID.randomUUID()
-
-        val vol = Vol(volId, "AF8000", "CDG", "ALG",
-            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
-            VolEtat.PREVU, null, pisteId)
-
-        val piste = Piste(pisteId, "P2", 3000, PisteEtat.OCCUPEE)
-
-        val updatedPiste = piste.copy(etat = PisteEtat.LIBRE)
-        val updatedVol = vol.copy(pisteId = null)
-
-        every { volPort.findById(volId) } returns Mono.just(vol)
-        every { pistePort.findById(pisteId) } returns Mono.just(piste)
-        every { pistePort.save(updatedPiste) } returns Mono.just(updatedPiste)
-        every { volPort.save(updatedVol) } returns Mono.just(updatedVol)
-
-        StepVerifier.create(service.releasePiste(volId))
-            .expectNext(updatedVol)
-            .verifyComplete()
-    }
-
-    @Test
-    fun `releasePiste fails when no piste is assigned`() {
-        val volId = UUID.randomUUID()
-
-        val vol = Vol(volId, "AF8001", "CDG", "ALG",
-            LocalDateTime.now(), LocalDateTime.now().plusHours(2),
-            VolEtat.PREVU, null, null)
-
-        every { volPort.findById(volId) } returns Mono.just(vol)
-
-        StepVerifier.create(service.releasePiste(volId))
-            .expectError(IllegalStateException::class.java)
-            .verify()
     }
 
     @Test

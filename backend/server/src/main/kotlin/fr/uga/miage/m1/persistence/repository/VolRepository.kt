@@ -17,5 +17,6 @@ interface VolRepository : ReactiveCrudRepository<VolEntity, UUID> {
     fun findByOrigineAndDestination(origine: String, destination: String): Flux<VolEntity>
 
     fun findByPisteId(pisteId: UUID): Flux<VolEntity>
+    fun existsByAvionIdAndEtatIn(avionId: UUID, etats: Collection<VolEtat>): Mono<Boolean>
 
 }

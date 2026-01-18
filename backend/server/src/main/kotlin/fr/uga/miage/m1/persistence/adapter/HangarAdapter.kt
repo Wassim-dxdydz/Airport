@@ -34,6 +34,9 @@ class HangarAdapter(
 
     override fun existsById(id: UUID): Mono<Boolean> =
         repo.existsById(id)
+
+    override fun findAllByIds(ids: Set<UUID>): Flux<Hangar> =
+        repo.findAllById(ids).map { it.toDomain() }
 }
 
 fun HangarEntity.toDomain() = Hangar(id, identifiant, capacite, etat)

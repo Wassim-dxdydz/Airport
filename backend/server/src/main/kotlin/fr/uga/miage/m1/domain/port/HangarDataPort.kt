@@ -20,4 +20,6 @@ interface HangarDataPort {
     fun deleteByIdentifiant(identifiant: String): Mono<Unit>
 
     fun existsById(id: UUID): Mono<Boolean>
+
+    fun findAllByIds(ids: Set<UUID>): Flux<Hangar>
 }

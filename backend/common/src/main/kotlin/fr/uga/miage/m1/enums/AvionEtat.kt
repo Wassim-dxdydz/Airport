@@ -1,7 +1,7 @@
 package backend.common.src.main.kotlin.fr.uga.miage.m1.enums
 
 enum class AvionEtat {
-    EN_SERVICE,
+    EN_VOL,
     MAINTENANCE,
-    HORS_SERVICE
+    DISPONIBLE
 }

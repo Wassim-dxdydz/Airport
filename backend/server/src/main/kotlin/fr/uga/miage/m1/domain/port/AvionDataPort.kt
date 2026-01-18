@@ -20,8 +20,8 @@ interface AvionDataPort {
 
     fun existsByImmatriculation(immatriculation: String): Mono<Boolean>
 
-
     fun findByImmatriculation(immatriculation: String): Mono<Avion>
 
+    fun countByHangarId(hangarId: UUID): Mono<Long>
 }
 

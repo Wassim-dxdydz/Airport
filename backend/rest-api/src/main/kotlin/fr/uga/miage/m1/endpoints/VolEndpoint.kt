@@ -4,6 +4,7 @@ import fr.uga.miage.m1.requests.CreateVolRequest
 import fr.uga.miage.m1.requests.UpdateVolRequest
 import fr.uga.miage.m1.responses.VolResponse
 import backend.common.src.main.kotlin.fr.uga.miage.m1.enums.VolEtat
+import fr.uga.miage.m1.models.VolDto
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
@@ -59,4 +60,6 @@ interface VolEndpoint {
     @GetMapping("/traffic")
     fun traffic(): Flux<VolResponse>
 
+    @GetMapping("/departures/{origin}")
+    fun getDepartures(@PathVariable origin: String): Flux<VolDto>
 }

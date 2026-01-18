@@ -1,4 +1,3 @@
-// src/components/site-header.tsx
 "use client";
 
 import Link from "next/link";
@@ -20,6 +19,8 @@ const NAV = [
     { href: "/hangar", label: "Hangar" },
     { href: "/piste", label: "Piste" },
     { href: "/vol", label: "Vol" },
+    { href: "/passager", label: "Passagers" },
+    { href: "/checkin", label: "Check-ins" },
 ];
 
 export function SiteHeader() {
@@ -44,7 +45,6 @@ export function SiteHeader() {
             )}
         >
             <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-                {/* Left: Logo */}
                 <Link
                     href="/"
                     className={cn(
@@ -61,8 +61,7 @@ export function SiteHeader() {
                     <span className="text-lg font-semibold tracking-tight">AéroOps</span>
                 </Link>
 
-                {/* Center: Nav with underline */}
-                <nav className="hidden md:flex flex-1 justify-center gap-20">
+                <nav className="hidden md:flex flex-1 justify-center gap-16">
                     {NAV.map((item) => {
                         const isActive = pathname.startsWith(item.href);
                         return (
@@ -89,11 +88,7 @@ export function SiteHeader() {
                         );
                     })}
                 </nav>
-
-                {/* Right placeholder */}
                 <div className="hidden md:block w-10" />
-
-                {/* Mobile menu */}
                 <div className="md:hidden">
                     <Sheet>
                         <SheetTrigger asChild>

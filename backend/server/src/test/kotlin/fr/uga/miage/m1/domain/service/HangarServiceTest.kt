@@ -101,8 +101,8 @@ class HangarServiceTest {
     @Test
     fun `listAvions returns only avions in hangar`() {
         val id = UUID.randomUUID()
-        val a1 = fr.uga.miage.m1.domain.model.Avion(UUID.randomUUID(), "A", "T", 10, AvionEtat.EN_SERVICE, id)
-        val a2 = fr.uga.miage.m1.domain.model.Avion(UUID.randomUUID(), "B", "U", 20, AvionEtat.EN_SERVICE, null)
+        val a1 = fr.uga.miage.m1.domain.model.Avion(UUID.randomUUID(), "A", "T", 10, AvionEtat.EN_VOL, id)
+        val a2 = fr.uga.miage.m1.domain.model.Avion(UUID.randomUUID(), "B", "U", 20, AvionEtat.EN_VOL, null)
 
         every { avionPort.findAll() } returns Flux.just(a1, a2)
 

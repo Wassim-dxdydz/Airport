@@ -5,14 +5,13 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const WORDS = ["Avions", "Hangars", "Pistes", "Vols"];
+const WORDS = ["Avions", "Hangars", "Pistes", "Vols", "Passagers", "Check-ins"];
 
 export function HeroClient() {
     const [index, setIndex] = useState(0);
     const [subText, setSubText] = useState("");
     const [deleting, setDeleting] = useState(false);
 
-    // Slower, smoother typing animation
     useEffect(() => {
         const currentWord = WORDS[index];
         const speed = deleting ? 100 : 180;
@@ -23,7 +22,7 @@ export function HeroClient() {
             } else if (deleting && subText.length > 0) {
                 setSubText(currentWord.slice(0, subText.length - 1));
             } else if (!deleting && subText.length === currentWord.length) {
-                setTimeout(() => setDeleting(true), 1000); // pause before delete
+                setTimeout(() => setDeleting(true), 1000);
             } else if (deleting && subText.length === 0) {
                 setDeleting(false);
                 setIndex((i) => (i + 1) % WORDS.length);

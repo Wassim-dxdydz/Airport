@@ -3,7 +3,9 @@ package fr.uga.miage.m1.exceptions
 import org.junit.jupiter.api.Test
 import org.springframework.core.MethodParameter
 import org.springframework.http.HttpStatus
-import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.support.WebExchangeBindException
+import org.springframework.http.codec.HttpMessageReader
+import org.springframework.web.server.ServerWebInputException
 import org.springframework.validation.BeanPropertyBindingResult
 import org.springframework.validation.FieldError
 import org.springframework.web.server.ResponseStatusException
@@ -26,7 +28,7 @@ class GlobalExceptionHandlerTest {
         val method = DummyClass::class.java.getMethod("dummyMethod", String::class.java)
         val methodParameter = MethodParameter(method, 0)
 
-        val ex = MethodArgumentNotValidException(methodParameter, binding)
+        val ex = WebExchangeBindException(methodParameter, binding)
 
         val response = handler.handleValidation(ex)
 

@@ -23,16 +23,17 @@ object AvionMapper {
             type = req.type ?: current.type,
             capacite = req.capacite ?: current.capacite,
             etat = req.etat ?: current.etat,
-            hangarId = req.hangarId ?: current.hangarId
+            hangarId = current.hangarId
         )
 
-    fun toResponse(avion: Avion): AvionResponse =
+    fun toResponse(avion: Avion, hangarIdentifiant: String? = null): AvionResponse =
         AvionResponse(
             id = avion.id,
             immatriculation = avion.immatriculation,
             type = avion.type,
             capacite = avion.capacite,
             etat = avion.etat,
-            hangarId = avion.hangarId
+            hangarId = avion.hangarId,
+            hangarIdentifiant = hangarIdentifiant
         )
 }

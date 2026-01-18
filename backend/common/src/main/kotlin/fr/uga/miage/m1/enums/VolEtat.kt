@@ -7,5 +7,6 @@ enum class VolEtat {
     DECOLLE,
     EN_VOL,
     ARRIVE,
+    TERMINE,
     ANNULE
 }

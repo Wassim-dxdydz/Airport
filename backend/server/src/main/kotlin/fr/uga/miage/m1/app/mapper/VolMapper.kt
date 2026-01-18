@@ -17,8 +17,8 @@ object VolMapper {
             heureDepart = req.heureDepart,
             heureArrivee = req.heureArrivee,
             etat = VolEtat.PREVU,
-            avionId = null,
-            pisteId = null,
+            avionId = req.avionId,
+            pisteId = null
         )
 
     fun toPatchedDomain(current: Vol, req: UpdateVolRequest): Vol =
@@ -26,7 +26,8 @@ object VolMapper {
             origine = req.origine ?: current.origine,
             destination = req.destination ?: current.destination,
             heureDepart = req.heureDepart ?: current.heureDepart,
-            heureArrivee = req.heureArrivee ?: current.heureArrivee
+            heureArrivee = req.heureArrivee ?: current.heureArrivee,
+            etat = req.etat ?: current.etat
         )
 
     fun toResponse(vol: Vol): VolResponse =
@@ -40,7 +41,7 @@ object VolMapper {
             etat = vol.etat,
             avionId = vol.avionId,
             pisteId = vol.pisteId,
-            createdAt = null,   // domain does not know timestamps (Option A)
+            createdAt = null,
             updatedAt = null
         )
 }

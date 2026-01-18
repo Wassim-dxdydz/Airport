@@ -32,4 +32,7 @@ interface VolDataPort {
 
     fun findByPisteId(pisteId: UUID): Flux<Vol>
 
+    fun existsByAvionIdAndEtatIn(avionId: UUID, etats: Set<VolEtat>): Mono<Boolean>
+
+    fun existsById(id: UUID): Mono<Boolean>
 }
