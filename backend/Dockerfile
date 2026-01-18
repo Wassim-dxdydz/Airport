@@ -29,7 +29,7 @@ RUN addgroup -S appuser && adduser -S -G appuser appuser
 COPY --from=builder /app/backend/server/target/*.jar app.jar
 
 # IMPORTANT: Copy the shared-api JAR too
-COPY --from=builder /app/backend/server/src/libs/tassaux_roudoci-0.0.1-SNAPSHOT-SharedAPI.jar /app/libs/
+COPY --from=builder /app/backend/server/src/libs/client-api.jar /app/libs/
 
 RUN chown -R appuser:appuser /app
 USER appuser
