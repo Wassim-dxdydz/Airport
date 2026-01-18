@@ -37,6 +37,9 @@ import {
     CheckCircle2,
     XCircle,
     Search,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
@@ -75,6 +78,11 @@ type ValidationErrors = {
     telephone?: string;
 };
 
+type SortConfig = {
+    key: 'prenom' | 'nom' | null;
+    direction: 'asc' | 'desc' | null;
+};
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         ...init,
@@ -101,6 +109,7 @@ export default function PassagerPage() {
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState<Notification>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: null });
 
     const [openCreate, setOpenCreate] = useState(false);
     const [openEdit, setOpenEdit] = useState<Passenger | null>(null);
@@ -143,15 +152,52 @@ export default function PassagerPage() {
 
     useEffect(() => {
         const term = searchTerm.toLowerCase();
-        const filtered = allPassengers.filter(
+        let filtered = allPassengers.filter(
             (p) =>
                 p.prenom.toLowerCase().includes(term) ||
                 p.nom.toLowerCase().includes(term) ||
                 p.email.toLowerCase().includes(term) ||
                 p.telephone?.toLowerCase().includes(term)
         );
+
+        // Apply sorting
+        if (sortConfig.key && sortConfig.direction) {
+            filtered.sort((a, b) => {
+                const aValue = a[sortConfig.key!];
+                const bValue = b[sortConfig.key!];
+
+                return sortConfig.direction === 'asc'
+                    ? aValue.localeCompare(bValue)
+                    : bValue.localeCompare(aValue);
+            });
+        }
+
         setDisplayedPassengers(filtered);
-    }, [allPassengers, searchTerm]);
+    }, [allPassengers, searchTerm, sortConfig]);
+
+    const handleSort = (key: 'prenom' | 'nom') => {
+        setSortConfig(prev => {
+            if (prev.key !== key) {
+                return { key, direction: 'asc' };
+            }
+            if (prev.direction === 'asc') {
+                return { key, direction: 'desc' };
+            }
+            if (prev.direction === 'desc') {
+                return { key: null, direction: null };
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+
+    const getSortIcon = (key: 'prenom' | 'nom') => {
+        if (sortConfig.key !== key || sortConfig.direction === null) {
+            return <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />;
+        }
+        return sortConfig.direction === 'asc'
+            ? <ArrowUp className="ml-2 h-4 w-4 inline-block" />
+            : <ArrowDown className="ml-2 h-4 w-4 inline-block" />;
+    };
 
     const setCreateField = (k: string, v: any) => {
         setCreateForm((f) => ({ ...f, [k]: v }));
@@ -324,8 +370,20 @@ export default function PassagerPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Prénom</TableHead>
-                                <TableHead>Nom</TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('prenom')}
+                                >
+                                    Prénom
+                                    {getSortIcon('prenom')}
+                                </TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('nom')}
+                                >
+                                    Nom
+                                    {getSortIcon('nom')}
+                                </TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Téléphone</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>

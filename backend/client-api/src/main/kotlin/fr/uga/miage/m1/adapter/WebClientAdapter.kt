@@ -11,7 +11,7 @@ import reactor.core.publisher.Flux
 
 @Component
 class WebClientAdapter(
-    private val baseUrl: String = "http://129.88.210.36:8080/api/public/vols"
+    private val baseUrl: String = "http://129.88.210.36:8080/api/vols"
 ) : ApiClient {
 
     private val webClient: WebClient = WebClient.builder()
@@ -21,7 +21,7 @@ class WebClientAdapter(
 
     override fun getDeparturesFromATL(): Flux<VolDto> {
         return webClient.get()
-            .uri("/departures/ATL")
+            .uri("/arrivals/CDG")
             .retrieve()
             .bodyToFlux<VolDto>()
             .doOnError { e ->

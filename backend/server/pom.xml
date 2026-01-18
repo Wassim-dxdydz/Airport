@@ -30,8 +30,10 @@
         </dependency>
         <dependency>
             <groupId>fr.uga.miage.m1</groupId>
-            <artifactId>client-api</artifactId>
-            <version>${project.version}</version>
+            <artifactId>shared-api</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/libs/client-api.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

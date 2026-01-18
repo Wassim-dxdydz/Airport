@@ -81,7 +81,7 @@ class VolController(
         volService.trafficFor(airportCode)
             .map(VolMapper::toResponse)
 
-    override fun getDepartures(origin: String): Flux<VolDto> {
-        return volService.findDeparturesFromOrigin(origin)
+    override fun getDepartures(destination: String): Flux<VolDto> {
+        return volService.findArrivalsToDestination(destination)
     }
 }

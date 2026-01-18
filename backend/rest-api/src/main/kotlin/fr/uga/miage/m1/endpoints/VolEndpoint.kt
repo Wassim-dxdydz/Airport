@@ -60,6 +60,6 @@ interface VolEndpoint {
     @GetMapping("/traffic")
     fun traffic(): Flux<VolResponse>
 
-    @GetMapping("/departures/{origin}")
-    fun getDepartures(@PathVariable origin: String): Flux<VolDto>
+    @GetMapping("/arrivals/{destination}")
+    fun getDepartures(@PathVariable destination: String): Flux<VolDto>
 }

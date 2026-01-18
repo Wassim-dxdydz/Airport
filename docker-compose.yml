@@ -1,16 +1,20 @@
+version: "3.9"
+
 services:
   # PostgreSQL Database
   db:
     image: postgres:17
-    container_name: postgres-db
-    env_file:
-      - .env
+    container_name: airport-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - dbdata:/var/lib/postgresql/data
     networks:
-      - backend-net
+      - airport-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
@@ -20,9 +24,9 @@ services:
   # Spring Boot Backend
   backend:
     build:
-      context: ..
+      context: .
       dockerfile: backend/Dockerfile
-    container_name: backend-app
+    container_name: airport-backend
     depends_on:
       db:
         condition: service_healthy
@@ -37,15 +41,15 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - backend-net
+      - airport-net
     restart: unless-stopped
 
   # Next.js Frontend
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
       dockerfile: Dockerfile
-    container_name: frontend-app
+    container_name: airport-frontend
     depends_on:
       - backend
     environment:
@@ -53,26 +57,26 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - backend-net
+      - airport-net
     restart: unless-stopped
 
-  # PgAdmin
+  # PgAdmin (optionnel)
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin
+    container_name: airport-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "5050:80"
     depends_on:
       - db
     networks:
-      - backend-net
+      - airport-net
 
 volumes:
   dbdata:
 
 networks:
-  backend-net:
+  airport-net:
     driver: bridge

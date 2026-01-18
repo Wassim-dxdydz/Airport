@@ -342,9 +342,9 @@ class VolService(
         volPort.findByOrigine(airportCode)
             .mergeWith(volPort.findByDestination(airportCode))
 
-    fun findDeparturesFromOrigin(origin: String): Flux<VolDto> {
+    fun findArrivalsToDestination(destination: String): Flux<VolDto> {
         return volPort.findAll()
-            .filter { vol -> vol.origine.equals(origin, ignoreCase = true) }
+            .filter { vol -> vol.destination.equals(destination, ignoreCase = true) }
             .flatMap { vol ->
                 if (vol.avionId != null) {
                     avionPort.findById(vol.avionId)

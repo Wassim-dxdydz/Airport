@@ -1,0 +1,154 @@
+name: Build Release and Deploy Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_image:
+        description: 'Do you want to deploy the image into the serve?'
+        required: false
+        default: true
+      make-release:
+        description: 'Do you want to make a release'
+        required: false
+        default: false
+      tag_version:
+        description: 'Tag version to build (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+      remote_url:
+        description: ''
+        required: false
+        default: 'http://129.88.210.74:8080/api'
+      database_host:
+        description: 'the ip address of the database host'
+        required: true
+        default: '172.31.0.100'
+      database_port:
+        required: true
+        description: 'The port of the database'
+        default: '5432'
+      database_name:
+        description: 'The name of the database'
+        required: true
+        default: 'airport'
+      database_username:
+        description: 'Username of the database'
+        required: true
+        default: 'postgres'
+      database_password:
+        description: 'password of the database'
+        required: true
+        default: '0205116969'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: "strawhats"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    runs-on:
+      group: UGA runner
+
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: ./mvnw clean package -DskipTests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+
+      - name: Create Git tag
+        if: github.event.inputs.make-release == 'true'
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git tag ${{ github.event.inputs.tag_version }}
+          git push origin ${{ github.event.inputs.tag_version }}
+
+      - name: Build Docker image
+        run: |
+          docker buildx build --load \
+          -t ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag_version }} \
+          -f backend/Dockerfile \
+          .
+
+
+      - name: Save Docker image to tar
+        if: github.event.inputs.deploy_image == 'true'
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag_version }} -o image.tar
+          
+
+      - name: Setup SSH key
+        if: github.event.inputs.deploy_image == 'true'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CLOUD_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.CLOUD_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # Test connection with verbose output
+          echo "Testing SSH connection..."
+          ssh -vvv -i ~/.ssh/id_rsa ${{ secrets.CLOUD_USER }}@${{ secrets.CLOUD_HOST }} "echo 'SSH connection successful'" || exit 1
+          
+          echo "Testing key authentication..."
+          ssh -i ~/.ssh/id_rsa ${{ secrets.CLOUD_USER }}@${{ secrets.CLOUD_HOST }} "whoami"
+
+      - name: Transfer and deploy image
+        if: github.event.inputs.deploy_image == 'true'
+        run: |
+          # Transférer l'image tar vers le serveur
+          scp -i ~/.ssh/id_rsa image.tar ${{ secrets.CLOUD_USER }}@${{ secrets.CLOUD_HOST }}:/tmp/image.tar
+          
+          # Charger et lancer l'image sur le serveur
+          ssh -i ~/.ssh/id_rsa ${{ secrets.CLOUD_USER }}@${{ secrets.CLOUD_HOST }} << "EOF"
+          cd /tmp
+          echo "Loading image..."
+          docker load -i image.tar
+          echo "Image loaded successfully"
+          docker images | grep airport
+          
+          # Stop and remove the old container (if exists)
+          if [ $(docker ps -aq -f name=airport) ]; then
+          docker stop airport
+          docker rm airport
+          fi
+
+          docker run -d --name airport --net pc1 --ip 172.31.0.101 -p 8080:8080 -e REMOTE_URL="${{ github.event.inputs.remote_url }}" -e DATABASE_HOST="${{ github.event.inputs.database_host }}" -e DATABASE_PORT="${{ github.event.inputs.database_port }}" -e POSTGRES_DB="${{ github.event.inputs.database_name }}" -e POSTGRES_USER="${{ github.event.inputs.database_username }}" -e POSTGRES_PASSWORD="${{ github.event.inputs.database_password }}" --restart unless-stopped ${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag_version }}
+          
+          rm image.tar
+          EOF

@@ -23,6 +23,8 @@ class DataInitializerTest(
     @Autowired val pisteRepo: PisteRepository,
     @Autowired val volRepo: VolRepository,
     @Autowired val volHistoryRepo: VolHistoryRepository,
+    @Autowired val passengerRepo: PassengerRepository,
+    @Autowired val checkInRepo: CheckInRepository,
     @Autowired val initializer: DataInitializer
 ) {
 
@@ -35,7 +37,13 @@ class DataInitializerTest(
     @BeforeEach
     fun setup() {
         initializer.initDatabaseReactive(
-            hangarRepo, avionRepo, pisteRepo, volRepo, volHistoryRepo
+            hangarRepo,
+            avionRepo,
+            pisteRepo,
+            volRepo,
+            volHistoryRepo,
+            passengerRepo,
+            checkInRepo
         ).block()
     }
 
@@ -57,8 +65,16 @@ class DataInitializerTest(
             .expectNext(16)
             .verifyComplete()
 
+        StepVerifier.create(passengerRepo.count())
+            .expectNext(15)
+            .verifyComplete()
+
+        StepVerifier.create(checkInRepo.count())
+            .expectNext(18)
+            .verifyComplete()
+
         StepVerifier.create(volHistoryRepo.count())
-            .expectNext(9)
+            .expectNext(44)
             .verifyComplete()
     }
 }

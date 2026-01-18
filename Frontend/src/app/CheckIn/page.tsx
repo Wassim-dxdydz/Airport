@@ -44,6 +44,9 @@ import {
     CheckCircle2,
     XCircle,
     Filter,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
@@ -103,6 +106,11 @@ type ValidationErrors = {
     numeroSiege?: string;
 };
 
+type SortConfig = {
+    key: 'passager' | 'vol' | 'heureCheckIn' | null;
+    direction: 'asc' | 'desc' | null;
+};
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         ...init,
@@ -136,6 +144,7 @@ export default function CheckInPage() {
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState<Notification>(null);
     const [volFilter, setVolFilter] = useState<string>("ALL");
+    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: null });
 
     const [openCreate, setOpenCreate] = useState(false);
     const [openEdit, setOpenEdit] = useState<CheckIn | null>(null);
@@ -189,8 +198,61 @@ export default function CheckInPage() {
             filtered = filtered.filter(c => c.volId === volFilter);
         }
 
+        // Apply sorting
+        if (sortConfig.key && sortConfig.direction) {
+            filtered.sort((a, b) => {
+                let aValue: any;
+                let bValue: any;
+
+                if (sortConfig.key === 'passager') {
+                    aValue = getPassagerName(a);
+                    bValue = getPassagerName(b);
+                } else if (sortConfig.key === 'vol') {
+                    aValue = getVolNumero(a.volId);
+                    bValue = getVolNumero(b.volId);
+                } else if (sortConfig.key === 'heureCheckIn') {
+                    aValue = new Date(a.heureCheckIn).getTime();
+                    bValue = new Date(b.heureCheckIn).getTime();
+                }
+
+                if (typeof aValue === 'string') {
+                    return sortConfig.direction === 'asc'
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                } else {
+                    return sortConfig.direction === 'asc'
+                        ? aValue - bValue
+                        : bValue - aValue;
+                }
+            });
+        }
+
         setDisplayedCheckIns(filtered);
-    }, [allCheckIns, volFilter]);
+    }, [allCheckIns, volFilter, sortConfig]);
+
+    const handleSort = (key: 'passager' | 'vol' | 'heureCheckIn') => {
+        setSortConfig(prev => {
+            if (prev.key !== key) {
+                return { key, direction: 'asc' };
+            }
+            if (prev.direction === 'asc') {
+                return { key, direction: 'desc' };
+            }
+            if (prev.direction === 'desc') {
+                return { key: null, direction: null };
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+
+    const getSortIcon = (key: 'passager' | 'vol' | 'heureCheckIn') => {
+        if (sortConfig.key !== key || sortConfig.direction === null) {
+            return <ArrowUpDown className="ml-2 h-4 w-4 inline-block" />;
+        }
+        return sortConfig.direction === 'asc'
+            ? <ArrowUp className="ml-2 h-4 w-4 inline-block" />
+            : <ArrowDown className="ml-2 h-4 w-4 inline-block" />;
+    };
 
     const availableVols = vols.filter(v => v.avionId !== null);
 
@@ -373,10 +435,28 @@ export default function CheckInPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Passager</TableHead>
-                                <TableHead>Vol</TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('passager')}
+                                >
+                                    Passager
+                                    {getSortIcon('passager')}
+                                </TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('vol')}
+                                >
+                                    Vol
+                                    {getSortIcon('vol')}
+                                </TableHead>
                                 <TableHead>Siège</TableHead>
-                                <TableHead>Heure Check-in</TableHead>
+                                <TableHead
+                                    className="cursor-pointer select-none"
+                                    onClick={() => handleSort('heureCheckIn')}
+                                >
+                                    Heure Check-in
+                                    {getSortIcon('heureCheckIn')}
+                                </TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
