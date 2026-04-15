@@ -115,23 +115,6 @@ L’aéroport doit gérer ses vols et leur statut opérationnel.
     * Consommer l’API d’un autre aéroport pour afficher ses vols entrants/sortants vers votre aéroport.
     * ⚠️ Pensez à collaborer rapidement avec l'aéroport avec qui vous allez partager vos vols 
 
-#### Liste des associations entre les aéroports
-
-| Aéroport 1      | Aéroport 2      |
-|-----------------|-----------------|
-| crazyTime       | P&C-LIU&DING    |
-| Tassaux_Roudoci | strawhats       |
-| Feur            | jaretteLeCasino |
-| kozuki          | imene_amina     |
-| negadef         | lm              |
-| lydismail       | koTeam          |
-| Richard_Ouraha  | CIKOTLIN        |
-| Les flamboyants | Clover          |
-| jeannot_nicolas | mar             |
-| meFa            | ThieMah         |
-| uchiha          | lino            |
-
-
 <details> 
 <summary>💡 À savoir</summary>
 
